@@ -1,0 +1,28 @@
+User-agent: *
+
+Allow: /$
+Allow: /products
+Allow: /products/
+Allow: /category
+Allow: /category/
+
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /auth
+Disallow: /api
+Disallow: /order
+Disallow: /payment
+
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /*.php$
+
+Disallow: /*?*sort=
+Disallow: /*?*filter=
+Disallow: /*?*utm_=
+Disallow: /*?*ref=
+
+# --- Sitemap ---
+Sitemap: https://your-domain.com/sitemap.xml
