@@ -3,6 +3,7 @@ package secure_shop.backend.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.dto.UserDTO;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.service.UserService;
 import secure_shop.backend.service.impl.UserServiceImpl;
@@ -16,14 +17,16 @@ import java.util.UUID;
 public class UserController {
     private final UserService service;
 
-    @GetMapping
-    public List<User> getAll() {
-        return service.findAll();
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable UUID id) {
+        UserDTO user = service.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/{id}")
-    public User getOne(@PathVariable UUID id) {
-        return service.findById(id).orElse(null);
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<UserDTO> users = service.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
     @PostMapping

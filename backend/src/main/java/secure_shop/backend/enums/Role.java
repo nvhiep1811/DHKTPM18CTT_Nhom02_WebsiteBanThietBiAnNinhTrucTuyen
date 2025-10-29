@@ -1,4 +1,4 @@
-package secure_shop.backend.entities;
+package secure_shop.backend.enums;
 
 public enum Role {
     USER,

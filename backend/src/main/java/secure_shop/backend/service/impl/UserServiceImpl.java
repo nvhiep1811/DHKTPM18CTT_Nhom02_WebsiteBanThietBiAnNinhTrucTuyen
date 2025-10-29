@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import secure_shop.backend.dto.UserDTO;
 import secure_shop.backend.entities.User;
+import secure_shop.backend.mapper.UserMapper;
 import secure_shop.backend.repositories.UserRepository;
 import secure_shop.backend.service.UserService;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,11 +22,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
-
-    @Override
-    public List<User> findAll() {
-        return userRepository.findAll();
-    }
+    private final UserMapper userMapper;
 
     @Override
     public Optional<User> findById(UUID id) {
@@ -95,70 +93,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User findOrCreateFromOAuth(Map<String, Object> attributes,
-                                      String provider) {
-        String email = (String) attributes.get("email");
-        String name = (String) attributes.get("name");
+    @Transactional(readOnly = true)
+    public UserDTO getUserById(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email is required for OAuth user");
-        }
-
-        return userRepository.findByEmail(email)
-                .map(existingUser -> {
-                    // Update provider if not set
-                    if (existingUser.getProvider() == null) {
-                        existingUser.setProvider(provider);
-                        return userRepository.save(existingUser);
-                    }
-                    return existingUser;
-                })
-                .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setEmail(email);
-                    newUser.setName(name != null ? name : email);
-                    newUser.setProvider(provider);
-
-                    // Set secure random password for OAuth users
-                    newUser.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
-
-                    // Extract avatar
-                    Object pictureObj = attributes.get("picture");
-                    if (pictureObj instanceof String s) {
-                        newUser.setAvatarUrl(s);
-                    } else if (pictureObj instanceof Map<?, ?> picMap) {
-                        Object dataObj = picMap.get("data");
-                        if (dataObj instanceof Map<?, ?> dataMap) {
-                            Object urlObj = dataMap.get("url");
-                            if (urlObj instanceof String sUrl) {
-                                newUser.setAvatarUrl(sUrl);
-                            }
-                        }
-                    }
-
-                    User savedUser = userRepository.save(newUser);
-                    log.info("New OAuth user created: {} via {}", email, provider);
-                    return savedUser;
-                });
+        return userMapper.toDTO(user);  // ✅ Convert ngay trong transaction
     }
 
     @Override
-    public User findOrCreateOAuthUser(String email, String name) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-
-        return userRepository.findByEmail(email)
-                .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setEmail(email);
-                    newUser.setName(name != null ? name : email);
-                    newUser.setProvider("oauth"); // Generic OAuth provider
-                    newUser.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
-
-                    User savedUser = userRepository.save(newUser);
-                    log.info("New OAuth user created: {}", email);
-                    return savedUser;
-                });
+    @Transactional(readOnly = true)
+    public List<UserDTO> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return userMapper.toDTOList(users);  // ✅ Convert trong transaction
     }
 }

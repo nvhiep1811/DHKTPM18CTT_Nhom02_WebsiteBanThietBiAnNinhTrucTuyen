@@ -1,60 +1,72 @@
 package secure_shop.backend.entities;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.*;
+import secure_shop.backend.enums.Role;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
-@Data
+@Entity
+@Table(
+        name = "users",
+        indexes = {
+                @Index(name = "idx_users_email", columnList = "email"),
+                @Index(name = "idx_users_role", columnList = "role"),
+                @Index(name = "idx_users_enabled", columnList = "enabled")
+        }
+)
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
-public class User {
+@Builder
+public class User extends BaseEntity {
 
-    @Id
-    @GeneratedValue
-    @EqualsAndHashCode.Include
-    private UUID id;
-
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    @Column(unique = true, nullable = false, columnDefinition = "text")
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(columnDefinition = "text", nullable = false)
-    private String name;
-
-    @JsonProperty("avatar_url")
-    @Column(columnDefinition = "text")
-    private String avatarUrl;
-
-    @Column(columnDefinition = "text")
-    private String provider;
-
-    @Size(min = 8, message = "Password length must be at least 8 characters")
-    @JsonProperty("password_hash")
-    @Column(columnDefinition = "text")
+    @Column(nullable = false, length = 255)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "text")
-    private Role role;
+    @Column(nullable = false, length = 255)
+    private String name;
 
-    @PrePersist
-    void beforeInsert() {
-        this.createdAt = Instant.now();
-        if (role == null) {
-            role = Role.USER;
-        }
-    }
+    @Column(length = 20)
+    private String phone;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
+    @Column(columnDefinition = "TEXT")
+    private String avatarUrl;
+
+    @Column(length = 50)
+    private String provider; // google, facebook, local
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.USER;
+
+    // Soft delete
+    private Instant deletedAt;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<Review> reviews = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<SupportTicket> supportTickets = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @Builder.Default
+    private Set<Order> orders = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<Address> addresses = new HashSet<>();
 }
