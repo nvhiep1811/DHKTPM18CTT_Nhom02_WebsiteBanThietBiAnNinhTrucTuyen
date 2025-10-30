@@ -35,10 +35,17 @@ const Login: React.FC = () => {
       // Mock API call - replace with actual SpringBoot API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock successful login
-      console.log('Login data:', data);
-      toast.success('Đăng nhập thành công!');
-      navigate('/');
+     // Mock successful login
+console.log('Login data:', data);
+toast.success('Đăng nhập thành công!');
+
+// Lưu trạng thái login vào localStorage
+localStorage.setItem("userRole", "customer");
+
+// Có thể lưu email hay token nếu cần
+localStorage.setItem("userEmail", data.email);
+
+navigate('/');
     } catch (error) {
       toast.error('Đăng nhập thất bại. Vui lòng thử lại!');
     } finally {

@@ -4,25 +4,29 @@ import { Menu, X, ShoppingCart, User, Shield, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 
-interface HeaderProps {
-  userRole?: 'guest' | 'customer' | 'admin';
-}
 
-const Header: React.FC<HeaderProps> = ({ userRole = 'guest' }) => {
+const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [userRole, setUserRole] = useState<'guest' | 'customer' | 'admin'>('guest');
   const navigate = useNavigate();
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
+  useEffect(() => {
+  const role = localStorage.getItem("userRole") as 'guest' | 'customer' | 'admin';
+  if (role) setUserRole(role);
+}, []);
+
+
   const handleAuthAction = () => {
-    if (userRole === 'guest') {
-      navigate('/login');
-    } else {
-      // Handle logout
-      navigate('/');
-    }
-  };
+  if (userRole === 'guest') {
+    navigate('/login');
+  } else {
+    navigate('/profile');
+  }
+};
+
 
   useEffect(() => {
     const updateCartCount = async () => {
