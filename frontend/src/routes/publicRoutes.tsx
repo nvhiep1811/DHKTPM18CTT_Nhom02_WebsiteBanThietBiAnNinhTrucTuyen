@@ -4,6 +4,7 @@ import ProductDetail from "../pages/ProductDetail";
 import Login from "../pages/Login";
 import Cart from "../pages/Cart";
 import About from "../pages/About";
+import Contact from "../pages/Contact";
 
 export const publicRoutes = {
   path: "/",
@@ -31,6 +32,10 @@ export const publicRoutes = {
     {
       path: "about",
       element: <About />,
+    },
+    {
+      path: "contact",
+      element: <Contact />,
     },
   ],
 };
