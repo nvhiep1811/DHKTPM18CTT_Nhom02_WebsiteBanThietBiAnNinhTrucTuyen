@@ -5,6 +5,7 @@ import Login from "../pages/Login";
 import Cart from "../pages/Cart";
 import About from "../pages/About";
 import Contact from "../pages/Contact";
+import Profile from "../pages/Profile";
 
 export const publicRoutes = {
   path: "/",
@@ -36,6 +37,10 @@ export const publicRoutes = {
     {
       path: "contact",
       element: <Contact />,
+    },
+    {
+      path: "profile",
+      element: <Profile />,
     },
   ],
 };
