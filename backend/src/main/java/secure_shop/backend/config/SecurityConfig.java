@@ -12,8 +12,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import secure_shop.backend.security.jwt.JwtAuthenticationFilter;
+import secure_shop.backend.security.oauth2.OAuth2FailureHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -23,6 +23,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final AuthenticationSuccessHandler oauthSuccessHandler;
+    private final OAuth2FailureHandler oauthFailureHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -39,8 +40,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/error",
-                                "/api/users/**"
+                                "/error"
                         ).permitAll()
                         // All other user endpoints require authentication
                         .requestMatchers("/api/users/**").authenticated()
@@ -54,6 +54,7 @@ public class SecurityConfig {
                         .redirectionEndpoint(redirection -> redirection
                                 .baseUri("/login/oauth2/code/*"))
                         .successHandler(oauthSuccessHandler)
+                        .failureHandler(oauthFailureHandler)
                         .permitAll()
                 )
                 // Disable form login to prevent redirect loop

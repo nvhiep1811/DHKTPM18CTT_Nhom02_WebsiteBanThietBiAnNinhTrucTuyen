@@ -1,6 +1,6 @@
 package secure_shop.backend.service;
 
-import secure_shop.backend.dto.UserDTO;
+import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
 
 import java.util.List;
@@ -15,6 +15,6 @@ public interface UserService {
     void deleteById(UUID id);
     Optional<User> findByEmail(String email);
 
-    UserDTO getUserById(UUID id);
-    List<UserDTO> getAllUsers();
+    UserProfileDTO getUserById(UUID id);
+    List<UserProfileDTO> getAllUsers();
 }

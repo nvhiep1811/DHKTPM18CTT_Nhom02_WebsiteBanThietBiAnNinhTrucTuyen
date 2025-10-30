@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.UserDTO;
+import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.mapper.UserMapper;
 import secure_shop.backend.repositories.UserRepository;
@@ -94,7 +94,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDTO getUserById(UUID id) {
+    public UserProfileDTO getUserById(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -103,7 +103,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDTO> getAllUsers() {
+    public List<UserProfileDTO> getAllUsers() {
         List<User> users = userRepository.findAll();
         return userMapper.toDTOList(users);  // ✅ Convert trong transaction
     }

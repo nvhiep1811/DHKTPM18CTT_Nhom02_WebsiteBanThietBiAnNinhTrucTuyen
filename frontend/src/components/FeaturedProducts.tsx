@@ -3,6 +3,7 @@ import ProductCard from './ProductCard';
 import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 
 interface Product {
   id: string;
@@ -158,12 +159,12 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole = 'guest' 
           viewport={{ once: true }}
           className="text-center mt-12"
         >
-          <a
-            href="/products"
+          <Link
+            to="/products"
             className="inline-block bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
           >
             Xem Tất Cả Sản Phẩm
-          </a>
+          </Link>
         </motion.div>
       </div>
     </section>

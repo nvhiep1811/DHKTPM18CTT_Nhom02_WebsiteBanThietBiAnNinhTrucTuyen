@@ -8,8 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.dto.auth.AuthResponse;
+import secure_shop.backend.dto.auth.CustomUserDetails;
 import secure_shop.backend.dto.auth.LoginRequest;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.security.jwt.JwtService;
@@ -132,5 +135,25 @@ public class AuthController {
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
         return ResponseEntity.ok().body("Logged out");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileDTO> getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userDetails.getUser();
+
+        UserProfileDTO dto = UserProfileDTO.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
+                .role(user.getRole().name())
+                .build();
+
+        return ResponseEntity.ok(dto);
     }
 }

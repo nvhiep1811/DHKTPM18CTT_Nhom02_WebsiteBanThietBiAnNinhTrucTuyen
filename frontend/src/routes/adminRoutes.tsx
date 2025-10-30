@@ -1,9 +1,9 @@
+import AuthGuard from "../components/AuthGuard";
 import Admin from "../pages/Admin";
-// import AuthGuard from "../components/AuthGuard";
 
 export const adminRoutes = {
   path: "/admin",
-  // element: <AuthGuard />, // Uncomment khi đã có AuthGuard
+  element: <AuthGuard roles={["admin"]} />,
   children: [
     {
       index: true,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User } from 'lucide-react';
@@ -164,7 +164,7 @@ const ProductDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <Header userRole={userRole} />
+        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
@@ -193,7 +193,7 @@ const ProductDetail: React.FC = () => {
   if (!product) {
     return (
       <div className="min-h-screen bg-white">
-        <Header userRole={userRole} />
+        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm</p>
@@ -206,19 +206,19 @@ const ProductDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userRole={userRole} />
+      <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex mb-8" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-3">
             <li className="inline-flex items-center">
-              <a href="/" className="text-gray-700 hover:text-purple-600">Trang chủ</a>
+              <Link to="/" className="text-gray-700 hover:text-purple-600">Trang chủ</Link>
             </li>
             <li>
               <div className="flex items-center">
                 <span className="mx-2 text-gray-400">/</span>
-                <a href="/products" className="text-gray-700 hover:text-purple-600">Sản phẩm</a>
+                <Link to="/products" className="text-gray-700 hover:text-purple-600">Sản phẩm</Link>
               </div>
             </li>
             <li aria-current="page">
