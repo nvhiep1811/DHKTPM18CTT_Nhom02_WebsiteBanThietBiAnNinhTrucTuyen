@@ -2,6 +2,7 @@ import React from 'react';
 import { Shield, Award, Users, Clock, Target, Heart, TrendingUp, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 const About: React.FC = () => {
   const stats = [
@@ -267,20 +268,30 @@ const About: React.FC = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-5 gap-8">
             {[
               {
-                name: 'Nguyễn Văn A',
+                name: 'Nguyễn Võ Hiệp',
                 position: 'CEO & Founder',
                 image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
               },
               {
-                name: 'Trần Thị B',
+                name: 'Phan Nhật Tiến',
                 position: 'CTO',
                 image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
               },
               {
-                name: 'Lê Văn C',
+                name: 'Nguyễn Hoàng Khải',
+                position: 'Head of Operations',
+                image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
+              },
+              {
+                name: 'Nguyễn Gia Hào',
+                position: 'Head of Operations',
+                image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
+              },
+              {
+                name: 'Nguyễn Anh Xuân Trường',
                 position: 'Head of Operations',
                 image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
               }
@@ -336,6 +347,7 @@ const About: React.FC = () => {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
