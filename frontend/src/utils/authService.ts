@@ -71,4 +71,11 @@ export const authService = {
     const token = this.getAccessToken();
     return token !== null && !this.isTokenExpired();
   },
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return axiosInstance.post("/auth/change-password", {
+      currentPassword,
+      newPassword,
+    });
+  },
 };

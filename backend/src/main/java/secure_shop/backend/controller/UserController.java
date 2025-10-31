@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
+import secure_shop.backend.mapper.UserMapper;
 import secure_shop.backend.service.UserService;
 
 import java.util.List;
@@ -29,15 +30,14 @@ public class UserController {
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
-        return service.createUser(user);
+    public UserProfileDTO create(@RequestBody User user) {
+        return new UserMapper().toDTO(service.createUser(user));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable UUID id, @RequestBody User req) {
-        return ResponseEntity.ok(service.updateUser(id, req));
+    public ResponseEntity<UserProfileDTO> update(@PathVariable UUID id, @RequestBody User req) {
+        return ResponseEntity.ok(new UserMapper().toDTO(service.updateUser(id, req)));
     }
-
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {

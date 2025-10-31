@@ -4,6 +4,9 @@ import ProductDetail from "../pages/ProductDetail";
 import Login from "../pages/Login";
 import Cart from "../pages/Cart";
 import OAuth2Redirect from "../pages/OAuth2Redirect";
+import About from "../pages/About";
+import Contact from "../pages/Contact";
+import Profile from "../pages/Profile";
 
 export const publicRoutes = {
   path: "/",
@@ -31,6 +34,18 @@ export const publicRoutes = {
     { 
       path: "oauth2/redirect", 
       element: <OAuth2Redirect /> 
+    },
+    {
+      path: "about",
+      element: <About />,
+    },
+    {
+      path: "contact",
+      element: <Contact />,
+    },
+    {
+      path: "profile",
+      element: <Profile />,
     },
   ],
 };

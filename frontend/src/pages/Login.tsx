@@ -9,10 +9,9 @@ import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import axiosInstance from '../utils/axiosConfig';
-import { useDispatch } from 'react-redux';
-import { decodeToken } from '../utils/jwt';
-import type { User } from '../types/types';
+import { useAppDispatch, useAppSelector } from '../hooks';
 import { loginSuccess } from '../stores/authSlice';
+import type { User } from '../types/types';
 
 const loginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -26,6 +25,15 @@ interface AuthResponse {
   expiresIn: number;
 }
 
+interface UserProfileDTO {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  avatarUrl?: string;
+  role: string;
+}
+
 interface ErrorResponse {
   error?: string;
   message?: string;
@@ -33,10 +41,13 @@ interface ErrorResponse {
 
 const Login: React.FC = () => {
   const location = useLocation();
-
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   const {
     register,
@@ -46,52 +57,71 @@ const Login: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
-  const dispatch = useDispatch();
+  // Tự động chuyển hướng khi đã login
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirectTo = new URLSearchParams(location.search).get('redirect') || '/';
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location.search]);
 
+  // Xử lý OAuth error
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const oauthError = params.get("oauthError");
+    const oauthError = params.get('oauthError');
 
     if (oauthError) {
-      const message = decodeURIComponent(oauthError).includes("canceled")
-        ? "Bạn đã hủy đăng nhập với Google/Facebook."
+      const message = decodeURIComponent(oauthError).includes('canceled')
+        ? 'Bạn đã hủy đăng nhập với Google/Facebook.'
         : decodeURIComponent(oauthError);
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
       
+      window.history.replaceState({}, document.title, window.location.pathname);
       toast.error(message);
     }
   }, [location]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    
     try {
-      const response = await axiosInstance.post<AuthResponse>('/auth/login', data);
-      const { accessToken, expiresIn } = response.data;
-      const expiresAt = Date.now() + expiresIn * 1000;
+      // Step 1: Login và lấy access token
+      const loginResponse = await axiosInstance.post<AuthResponse>('/auth/login', data);
+      const { accessToken, expiresIn } = loginResponse.data;
 
+      // Step 2: Lưu token vào localStorage (để axiosInstance có thể dùng)
       localStorage.setItem('accessToken', accessToken);
+      const expiresAt = Date.now() + expiresIn * 1000;
       localStorage.setItem('tokenExpiresAt', expiresAt.toString());
 
-      // Giải mã token để lấy thông tin user
-      const payload = decodeToken(accessToken);
+      // Step 3: Gọi API /auth/me để lấy thông tin user đầy đủ
+      const meResponse = await axiosInstance.get<User>('/auth/me');
+      const userProfile = meResponse.data;
+
+      // Step 4: Chuyển đổi sang User type
       const user: User = {
-        id: payload?.sub,
-        name: payload?.name,
-        email: payload?.email,
-        role: payload?.role,
-        avatarUrl: payload?.avatarUrl,
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name,
+        phone: userProfile.phone,
+        role: userProfile.role as 'guest' | 'user' | 'admin',
+        avatarUrl: userProfile.avatarUrl,
       };
 
-      // Cập nhật Redux store
+      // Step 5: Dispatch action để cập nhật Redux store
       dispatch(loginSuccess({ user, accessToken }));
 
       toast.success('Đăng nhập thành công!');
-      const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/';
-      navigate(redirectTo);
+      
+      // Navigation sẽ được xử lý bởi useEffect
+      
     } catch (error) {
+      // Xóa token nếu có lỗi
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('tokenExpiresAt');
+      
       if (axios.isAxiosError(error)) {
         const errorData = error.response?.data as ErrorResponse;
+        
         if (error.response?.status === 401) {
           toast.error(errorData?.error || 'Email hoặc mật khẩu không đúng!');
         } else if (error.response?.status === 403) {
@@ -108,8 +138,16 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleOAuthLogin = (provider: "google" | "facebook") => {
-    window.location.href = `http://localhost:12345/oauth2/authorize/${provider}`;
+  const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+    const redirectTo = new URLSearchParams(location.search).get('redirect');
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:12345';
+    const oauthUrl = `${baseUrl}/oauth2/authorize/${provider}`;
+    
+    if (redirectTo) {
+      window.location.href = `${oauthUrl}?redirect=${encodeURIComponent(redirectTo)}`;
+    } else {
+      window.location.href = oauthUrl;
+    }
   };
 
   return (
@@ -222,7 +260,7 @@ const Login: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isLoading ? (
                     <div className="flex items-center">
@@ -248,8 +286,8 @@ const Login: React.FC = () => {
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => handleOAuthLogin("google")}
-                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    onClick={() => handleOAuthLogin('google')}
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -261,8 +299,8 @@ const Login: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => handleOAuthLogin("facebook")}
-                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    onClick={() => handleOAuthLogin('facebook')}
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953h-1.967c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />

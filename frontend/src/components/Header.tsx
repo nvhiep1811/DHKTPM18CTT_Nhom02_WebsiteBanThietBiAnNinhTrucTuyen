@@ -82,7 +82,11 @@ const Header: React.FC = () => {
                   onClick={toggleUserMenu}
                   className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                 >
-                  <User className="h-4 w-4" />
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="User Avatar" className="h-6 w-6 rounded-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6" />
+                  )}
                   <span className="max-w-32 truncate">{user.name || user.email}</span>
                 </button>
 

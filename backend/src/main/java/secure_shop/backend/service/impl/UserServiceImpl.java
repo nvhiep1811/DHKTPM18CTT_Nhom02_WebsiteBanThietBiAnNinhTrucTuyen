@@ -2,6 +2,7 @@ package secure_shop.backend.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,9 @@ public class UserServiceImpl implements UserService {
         if (req.getEmail() != null) {
             user.setEmail(req.getEmail());
         }
+        if (req.getPhone() != null) {
+            user.setPhone(req.getPhone());
+        }
         if (req.getAvatarUrl() != null) {
             user.setAvatarUrl(req.getAvatarUrl());
         }
@@ -107,4 +111,13 @@ public class UserServiceImpl implements UserService {
         List<User> users = userRepository.findAll();
         return userMapper.toDTOList(users);  // ✅ Convert trong transaction
     }
+
+    public void changePassword(User user, String currentPassword, String newPassword) {
+        if (!encoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BadCredentialsException("Incorrect current password");
+        }
+        user.setPasswordHash(encoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
 }

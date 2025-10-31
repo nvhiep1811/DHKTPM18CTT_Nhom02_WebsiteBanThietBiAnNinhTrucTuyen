@@ -1,26 +1,114 @@
-// Updated Profile.tsx with footer layout fix + Address, Payment, Orders mock UI
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../hooks';
+import { logout, restoreAuthSuccess } from '../stores/authSlice';
+import { toast } from 'react-toastify';
+import { userApi } from '../utils/api';
+import axiosInstance from '../utils/axiosConfig';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('account');
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-    const role = localStorage.getItem("userRole");
+  const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
 
-    if (!role || role === "guest") navigate('/login');
-    setUserEmail(email);
+  // Login/out redirect
+  useEffect(() => {
+    if (!user || user.role === "guest") navigate('/login');
+    setUserEmail(user?.email || null);
   }, [navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userEmail");
+  const handleLogout = () => {
+    dispatch(logout());
     navigate('/');
+  };
+
+  // Profile
+  const [formData, setFormData] = useState({
+    id: user?.id || '',
+    name: user?.name || '',
+    phone: user?.phone || '',
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      await userApi.updateProfile(formData);
+      toast.success("Cập nhật thông tin cá nhân thành công!");
+
+      const response = await axiosInstance.get("/auth/me");
+      const updatedUser = response.data;
+
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        dispatch(restoreAuthSuccess({ user: updatedUser, accessToken: token }));
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error("Update profile failed:", error);
+      toast.error("Cập nhật thất bại, vui lòng thử lại!");
+    }
+  };
+
+  // Change pass
+  const [pwdForm, setPwdForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const currentPwdRef = useRef<HTMLInputElement>(null);
+  const newPwdRef = useRef<HTMLInputElement>(null);
+  const confirmPwdRef = useRef<HTMLInputElement>(null);
+
+  const handlePwdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPwdForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwdForm.currentPassword) {
+      toast.error("Vui lòng nhập mật khẩu hiện tại!");
+      currentPwdRef.current?.focus();
+      return;
+    }
+
+    if (!pwdForm.newPassword) {
+      toast.error("Vui lòng nhập mật khẩu mới!");
+      newPwdRef.current?.focus();
+      return;
+    }
+
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      toast.error("Mật khẩu mới không khớp!");
+      confirmPwdRef.current?.focus();
+      return;
+    }
+
+    try {
+      await axiosInstance.post("/auth/change-password", {
+        currentPassword: pwdForm.currentPassword,
+        newPassword: pwdForm.newPassword,
+      });
+
+      toast.success("Đổi mật khẩu thành công!");
+      setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      currentPwdRef.current?.focus();
+    } catch (error: any) {
+      console.error("Change password failed:", error);
+      if (error.response?.data) toast.error(error.response.data);
+      else toast.error("Đổi mật khẩu thất bại, vui lòng thử lại!");
+    }
   };
 
   const menu = [
@@ -51,19 +139,19 @@ const Profile: React.FC = () => {
     switch (activeTab) {
       case 'account':
         return (
-          <div>
+          <form onSubmit={handleFormSubmit}>
             <h2 className="text-xl font-semibold text-zinc-800 mb-4">Thông tin cá nhân</h2>
             <p className="text-gray-600 mb-2">Email: {userEmail}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input className="border p-2 rounded" placeholder="Họ tên" />
-              <input className="border p-2 rounded" placeholder="Số điện thoại" />
+              <input className="border p-2 rounded" value={formData.name} name="name" onChange={handleInputChange} placeholder="Họ tên" />
+              <input className="border p-2 rounded" value={formData.phone} name="phone" onChange={handleInputChange} placeholder="Số điện thoại" />
               <input className="border p-2 rounded" placeholder="Ngày sinh" type="date" />
               <select className="border p-2 rounded">
                 <option>Giới tính</option><option>Nam</option><option>Nữ</option><option>Khác</option>
               </select>
             </div>
             <button className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">Lưu thay đổi</button>
-          </div>
+          </form>
         );
 
       case 'address':
@@ -124,12 +212,41 @@ const Profile: React.FC = () => {
         return (
           <div>
             <h2 className="text-xl font-semibold mb-4">Đổi mật khẩu</h2>
-            <div className="space-y-3">
-              <input type="password" className="border p-2 rounded w-full" placeholder="Mật khẩu hiện tại" />
-              <input type="password" className="border p-2 rounded w-full" placeholder="Mật khẩu mới" />
-              <input type="password" className="border p-2 rounded w-full" placeholder="Nhập lại mật khẩu mới" />
+            <div className="space-y-3 max-w-md">
+              <input
+                ref={currentPwdRef}
+                type="password"
+                name="currentPassword"
+                value={pwdForm.currentPassword}
+                onChange={handlePwdInputChange}
+                className="border p-2 rounded w-full"
+                placeholder="Mật khẩu hiện tại"
+              />
+              <input
+                ref={newPwdRef}
+                type="password"
+                name="newPassword"
+                value={pwdForm.newPassword}
+                onChange={handlePwdInputChange}
+                className="border p-2 rounded w-full"
+                placeholder="Mật khẩu mới"
+              />
+              <input
+                ref={confirmPwdRef}
+                type="password"
+                name="confirmPassword"
+                value={pwdForm.confirmPassword}
+                onChange={handlePwdInputChange}
+                className="border p-2 rounded w-full"
+                placeholder="Nhập lại mật khẩu mới"
+              />
             </div>
-            <button className="mt-4 bg-cyan-500 text-white px-6 py-2 rounded-lg hover:bg-cyan-600">Đổi mật khẩu</button>
+            <button
+              onClick={handleChangePassword}
+              className="mt-4 bg-cyan-500 text-white px-6 py-2 rounded-lg hover:bg-cyan-600"
+            >
+              Đổi mật khẩu
+            </button>
           </div>
         );
 
@@ -160,7 +277,7 @@ const Profile: React.FC = () => {
             ))}
             <li>
               <button 
-                onClick={logout} 
+                onClick={handleLogout} 
                 className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100"
               >
                 Đăng xuất

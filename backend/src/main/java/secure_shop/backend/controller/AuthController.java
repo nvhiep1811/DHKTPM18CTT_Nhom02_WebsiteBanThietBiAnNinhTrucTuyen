@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.dto.auth.AuthResponse;
+import secure_shop.backend.dto.auth.ChangePasswordRequest;
 import secure_shop.backend.dto.auth.CustomUserDetails;
 import secure_shop.backend.dto.auth.LoginRequest;
 import secure_shop.backend.entities.User;
@@ -156,4 +157,23 @@ public class AuthController {
 
         return ResponseEntity.ok(dto);
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody ChangePasswordRequest request) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+        }
+
+        User user = userDetails.getUser();
+
+        // Cập nhật mật khẩu mới
+        userService.changePassword(user, request.getCurrentPassword(), request.getNewPassword());
+
+
+        return ResponseEntity.ok("Password changed successfully");
+    }
+
 }
