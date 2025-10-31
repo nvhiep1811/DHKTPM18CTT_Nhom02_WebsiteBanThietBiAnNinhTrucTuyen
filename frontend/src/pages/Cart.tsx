@@ -20,7 +20,6 @@ const Cart: React.FC = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest'; // From auth context
 
   useEffect(() => {
     loadCart();
@@ -81,7 +80,7 @@ const Cart: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <Header userRole={userRole} />
+        <Header />
         <div className="bg-gray-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="animate-pulse space-y-4">
@@ -94,6 +93,7 @@ const Cart: React.FC = () => {
       </div>
     );
   }
+  
 
   if (cartItems.length === 0) {
     return (
@@ -112,13 +112,13 @@ const Cart: React.FC = () => {
             <p className="text-gray-600 mb-8">
               Bạn chưa có sản phẩm nào trong giỏ hàng
             </p>
-            <a
-              href="/products"
+            <Link
+              to="/products"
               className="inline-flex items-center gap-2 bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               Tiếp Tục Mua Sắm
-            </a>
+            </Link>
           </motion.div>
         </div>
       </div>
@@ -131,7 +131,7 @@ const Cart: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userRole={userRole} />
+      <Header />
       
       <div className="bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -289,12 +289,12 @@ const Cart: React.FC = () => {
                   Tiến Hành Thanh Toán
                 </button>
 
-                <a
-                  href="/products"
+                <Link
+                  to="/products"
                   className="block text-center text-purple-600 hover:text-purple-700 font-semibold transition-colors"
                 >
                   ← Tiếp Tục Mua Sắm
-                </a>
+                </Link>
 
                 {/* Trust Badges */}
                 <div className="mt-6 pt-6 border-t space-y-3">

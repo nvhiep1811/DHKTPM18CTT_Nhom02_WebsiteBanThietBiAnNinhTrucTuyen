@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import HeroSection from '../components/HeroSection';
 import FeaturedProducts from '../components/FeaturedProducts';
+import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
   // Mock user role - in real app, this would come from authentication context
@@ -10,7 +11,7 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userRole={userRole} />
+      <Header/>
       <main>
         <HeroSection />
         <FeaturedProducts userRole={userRole} />
@@ -67,18 +68,18 @@ const Home: React.FC = () => {
               Liên hệ ngay với chúng tôi để được tư vấn miễn phí về giải pháp an ninh phù hợp nhất
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="/contact"
+              <Link
+                to="/contact"
                 className="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
               >
                 Tư Vấn Miễn Phí
-              </a>
-              <a
-                href="tel:0123456789"
+              </Link>
+              <Link
+                to="tel:0123456789"
                 className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-purple-600 transition-colors"
               >
                 Gọi Ngay: 0123 456 789
-              </a>
+              </Link>
             </div>
           </div>
         </section>

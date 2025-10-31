@@ -17,15 +17,15 @@ const Footer: React.FC = () => {
               Chuyên cung cấp thiết bị an ninh chất lượng cao, đảm bảo an toàn cho ngôi nhà và doanh nghiệp của bạn.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
+              <Link to="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
                 <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
+              </Link>
+              <Link to="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
                 <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
+              </Link>
+              <Link to="#" className="text-gray-300 hover:text-cyan-500 transition-colors">
                 <Instagram className="h-5 w-5" />
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -117,7 +117,7 @@ const Footer: React.FC = () => {
               </Link>
             </div>
             <p className="text-gray-300 text-sm">
-              Built with ❤️ by <a rel="nofollow" target="_blank" href="https://fiveting.dev" className="text-cyan-500 hover:text-cyan-400 transition-colors">Fiveting</a>
+              Built with ❤️ by <Link rel="nofollow" target="_blank" to="https://fiveting.dev" className="text-cyan-500 hover:text-cyan-400 transition-colors">Fiveting</Link>
             </p>
           </div>
         </div>

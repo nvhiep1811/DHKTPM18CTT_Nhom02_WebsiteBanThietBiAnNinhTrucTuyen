@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const NotFound: React.FC = () => {
   return (
@@ -116,12 +117,12 @@ const NotFound: React.FC = () => {
         <p className="mb-8 text-base text-white/60 sm:text-lg">
           We can&apos;t seem to find the page you are looking for!
         </p>
-        <a
-          href={typeof window !== 'undefined' ? window.location.origin : '/'}
+        <Link
+          to={typeof window !== 'undefined' ? window.location.origin : '/'}
           className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
         >
           Back to homepage
-        </a>
+        </Link>
 
         {/* Footer */}
         <div className="mt-16">

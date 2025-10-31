@@ -6,6 +6,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import secure_shop.backend.dto.auth.CustomUserDetails;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.repositories.UserRepository;
 
@@ -26,37 +27,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user;
 
-        // Try to load by UUID first (for JWT authentication)
-        try {
-            UUID userId = UUID.fromString(username);
-            user = userRepository.findById(userId)
-                    .orElse(null);
-        } catch (IllegalArgumentException e) {
-            // Not a valid UUID, try email
-            user = null;
+        // 1. Ưu tiên tìm bằng UUID (khi JWT gửi sub = userId)
+        if (username.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+            user = userRepository.findById(UUID.fromString(username)).orElse(null);
+        } else {
+            // 2. Nếu không phải UUID → tìm bằng email
+            user = userRepository.findByEmail(username).orElse(null);
         }
 
-        // If not found by UUID, try email (for form login)
         if (user == null) {
-            user = userRepository.findByEmail(username)
-                    .orElseThrow(() -> new UsernameNotFoundException(
-                            "User not found: " + username));
+            throw new UsernameNotFoundException("User not found: " + username);
         }
 
-        return buildUserDetails(user);
-    }
-
-    private UserDetails buildUserDetails(User user) {
-        String role = "ROLE_" + (user.getRole() != null ? user.getRole().name() : "USER");
-
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getId().toString()) // Use UUID as username
-                .password(user.getPasswordHash() != null ? user.getPasswordHash() : "")
-                .authorities(Collections.singletonList(new SimpleGrantedAuthority(role)))
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
-                .disabled(false)
-                .build();
+        return new CustomUserDetails(user);
     }
 }

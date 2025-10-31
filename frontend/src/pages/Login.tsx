@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Shield, Mail, Lock } from 'lucide-react';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import axiosInstance from '../utils/axiosConfig';
+import { useDispatch } from 'react-redux';
+import { decodeToken } from '../utils/jwt';
+import type { User } from '../types/types';
+import { loginSuccess } from '../stores/authSlice';
 
 const loginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -15,7 +21,19 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+interface AuthResponse {
+  accessToken: string;
+  expiresIn: number;
+}
+
+interface ErrorResponse {
+  error?: string;
+  message?: string;
+}
+
 const Login: React.FC = () => {
+  const location = useLocation();
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -28,34 +46,75 @@ const Login: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthError = params.get("oauthError");
+
+    if (oauthError) {
+      const message = decodeURIComponent(oauthError).includes("canceled")
+        ? "Bạn đã hủy đăng nhập với Google/Facebook."
+        : decodeURIComponent(oauthError);
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      toast.error(message);
+    }
+  }, [location]);
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    
     try {
-      // Mock API call - replace with actual SpringBoot API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-     // Mock successful login
-console.log('Login data:', data);
-toast.success('Đăng nhập thành công!');
+      const response = await axiosInstance.post<AuthResponse>('/auth/login', data);
+      const { accessToken, expiresIn } = response.data;
+      const expiresAt = Date.now() + expiresIn * 1000;
 
-// Lưu trạng thái login vào localStorage
-localStorage.setItem("userRole", "customer");
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('tokenExpiresAt', expiresAt.toString());
 
-// Có thể lưu email hay token nếu cần
-localStorage.setItem("userEmail", data.email);
+      // Giải mã token để lấy thông tin user
+      const payload = decodeToken(accessToken);
+      const user: User = {
+        id: payload?.sub,
+        name: payload?.name,
+        email: payload?.email,
+        role: payload?.role,
+        avatarUrl: payload?.avatarUrl,
+      };
 
-navigate('/');
+      // Cập nhật Redux store
+      dispatch(loginSuccess({ user, accessToken }));
+
+      toast.success('Đăng nhập thành công!');
+      const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/';
+      navigate(redirectTo);
     } catch (error) {
-      toast.error('Đăng nhập thất bại. Vui lòng thử lại!');
+      if (axios.isAxiosError(error)) {
+        const errorData = error.response?.data as ErrorResponse;
+        if (error.response?.status === 401) {
+          toast.error(errorData?.error || 'Email hoặc mật khẩu không đúng!');
+        } else if (error.response?.status === 403) {
+          toast.error(errorData?.error || 'Tài khoản đã bị khóa hoặc vô hiệu hóa!');
+        } else {
+          toast.error(errorData?.error || errorData?.message || 'Đăng nhập thất bại. Vui lòng thử lại!');
+        }
+      } else {
+        console.error('Login error:', error);
+        toast.error('Không thể kết nối đến server. Vui lòng thử lại!');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleOAuthLogin = (provider: "google" | "facebook") => {
+    window.location.href = `http://localhost:12345/oauth2/authorize/${provider}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header userRole="guest" />
+      <Header />
       
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -189,24 +248,24 @@ navigate('/');
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     type="button"
+                    onClick={() => handleOAuthLogin("google")}
                     className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                   >
-                    <span className="sr-only">Đăng nhập với Google</span>
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
                   </button>
 
                   <button
                     type="button"
+                    onClick={() => handleOAuthLogin("facebook")}
                     className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                   >
-                    <span className="sr-only">Đăng nhập với Facebook</span>
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953h-1.967c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
                   </button>
                 </div>

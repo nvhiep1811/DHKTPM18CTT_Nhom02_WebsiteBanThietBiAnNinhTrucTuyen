@@ -3,9 +3,7 @@ import Products from "../pages/Products";
 import ProductDetail from "../pages/ProductDetail";
 import Login from "../pages/Login";
 import Cart from "../pages/Cart";
-import About from "../pages/About";
-import Contact from "../pages/Contact";
-import Profile from "../pages/Profile";
+import OAuth2Redirect from "../pages/OAuth2Redirect";
 
 export const publicRoutes = {
   path: "/",
@@ -30,17 +28,9 @@ export const publicRoutes = {
       path: "cart",
       element: <Cart />,
     },
-    {
-      path: "about",
-      element: <About />,
-    },
-    {
-      path: "contact",
-      element: <Contact />,
-    },
-    {
-      path: "profile",
-      element: <Profile />,
+    { 
+      path: "oauth2/redirect", 
+      element: <OAuth2Redirect /> 
     },
   ],
 };

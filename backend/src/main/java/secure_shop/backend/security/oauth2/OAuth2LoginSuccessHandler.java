@@ -85,19 +85,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                     .build();
             response.addHeader("Set-Cookie", cookie.toString());
 
-//            String redirectUrl = String.format("%s/oauth2/redirect?access_token=%s&expires_in=%d",
-//                    frontendUrl,
-//                    URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
-//                    jwtService.getAccessExpSeconds());
-//            response.sendRedirect(redirectUrl);
-
-//            Return tokens in response body (for testing purposes)
-            response.setContentType("application/json");
-            String responseBody = String.format("{\"access_token\":\"%s\",\"expires_in\":%d}",
-                    accessToken,
+            String redirectUrl = String.format("%s/oauth2/redirect?access_token=%s&expires_in=%d",
+                    frontendUrl,
+                    URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
                     jwtService.getAccessExpSeconds());
-            response.getWriter().write(responseBody);
-
+            response.sendRedirect(redirectUrl);
         } catch (Exception e) {
             log.error("OAuth login error: ", e);
             redirectToError(response, "Authentication failed");
