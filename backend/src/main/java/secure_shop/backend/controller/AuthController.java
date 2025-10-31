@@ -17,6 +17,7 @@ import secure_shop.backend.dto.auth.CustomUserDetails;
 import secure_shop.backend.dto.auth.LoginRequest;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.security.jwt.JwtService;
+import secure_shop.backend.service.PasswordResetService;
 import secure_shop.backend.service.UserService;
 
 import jakarta.servlet.http.Cookie;
@@ -34,6 +35,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserService userService;
+    private final PasswordResetService resetService;
 
     // ====== LOGIN ======
     @PostMapping("/login")
@@ -176,4 +178,21 @@ public class AuthController {
         return ResponseEntity.ok("Password changed successfully");
     }
 
+    @PostMapping("/forgot-password")
+    public String forgotPassword(@RequestParam String email) {
+        resetService.sendResetLink(email);
+        return "Liên kết khôi phục đã được gửi đến email của bạn.";
+    }
+
+    @GetMapping("/verify-token")
+    public boolean verifyToken(@RequestParam String token) {
+        return resetService.verifyToken(token);
+
+    }
+
+    @PostMapping("/reset-password")
+    public String resetPassword(@RequestParam String token, @RequestParam String newPassword) {
+        boolean ok = resetService.resetPassword(token, newPassword);
+        return ok ? "Đổi mật khẩu thành công." : "Token không hợp lệ hoặc đã hết hạn.";
+    }
 }

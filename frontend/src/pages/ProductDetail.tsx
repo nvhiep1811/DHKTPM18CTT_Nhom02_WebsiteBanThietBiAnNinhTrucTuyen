@@ -43,7 +43,7 @@ const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest';
+  const userRole: 'guest' | 'user' | 'admin' = 'guest';
 
   // Mock product data
   useEffect(() => {
@@ -347,21 +347,29 @@ const ProductDetail: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={handleAddToCart}
-                disabled={!product.inStock}
-                className="flex-1 bg-gray-100 text-zinc-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                Thêm vào giỏ hàng
-              </button>
-              <button
-                onClick={handleBuyNow}
-                disabled={!product.inStock}
-                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Mua ngay
-              </button>
+              {product.inStock ? (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex-1 bg-gray-100 text-zinc-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Thêm vào giỏ hàng
+                  </button>
+                  <button
+                    onClick={handleBuyNow}
+                    className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Mua ngay
+                  </button>
+                </>
+              ) : (
+                <div className="w-full bg-gray-200 text-gray-600 px-6 py-3 rounded-lg text-center font-medium cursor-not-allowed">
+                  Hết hàng
+                </div>
+              )}
+
+              {/* Wishlist luôn hoạt động */}
               <button
                 onClick={handleWishlist}
                 className={`p-3 rounded-lg border ${

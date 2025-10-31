@@ -28,6 +28,7 @@ const OAuth2Redirect: React.FC = () => {
         id: payload?.sub,
         name: payload?.name,
         email: payload?.email,
+        phone: payload?.phone || "",
         role: payload?.role,
         avatarUrl: payload?.avatarUrl,
       };

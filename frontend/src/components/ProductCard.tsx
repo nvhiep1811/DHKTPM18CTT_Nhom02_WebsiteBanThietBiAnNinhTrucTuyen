@@ -17,7 +17,7 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
-  userRole?: 'guest' | 'customer' | 'admin';
+  userRole?: 'guest' | 'user' | 'admin';
   onAddToCart?: (product: Product) => void;
 }
 

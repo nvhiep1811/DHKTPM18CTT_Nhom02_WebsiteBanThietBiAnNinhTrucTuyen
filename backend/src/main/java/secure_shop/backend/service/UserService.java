@@ -4,7 +4,6 @@ import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,4 +18,6 @@ public interface UserService {
     List<UserProfileDTO> getAllUsers();
 
     void changePassword(User user, String currentPassword, String newPassword);
+
+    boolean updatePassword(String email, String newPassword);
 }

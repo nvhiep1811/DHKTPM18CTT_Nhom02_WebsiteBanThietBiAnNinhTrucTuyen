@@ -18,7 +18,7 @@ interface Product {
 }
 
 interface FeaturedProductsProps {
-  userRole?: 'guest' | 'customer' | 'admin';
+  userRole?: 'guest' | 'user' | 'admin';
 }
 
 const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole = 'guest' }) => {

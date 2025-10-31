@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -24,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableAsync
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -51,7 +53,7 @@ public class SecurityConfig {
                         // OPTIONS requests - CHO PHÉP TẤT CẢ (CORS preflight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public endpoints - NO authentication required
+                        // Login/out - Register endpoints - NO authentication required
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/refresh",
@@ -60,6 +62,12 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/error"
+                        ).permitAll()
+                        // Reset password endpoints - NO authentication required
+                        .requestMatchers(
+                                "/api/auth/forgot-password",
+                                "/api/auth/verify-token",
+                                "/api/auth/reset-password"
                         ).permitAll()
 
                         // User endpoints require authentication

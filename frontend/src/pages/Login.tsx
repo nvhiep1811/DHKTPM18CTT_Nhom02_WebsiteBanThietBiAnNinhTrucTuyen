@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import axiosInstance from '../utils/axiosConfig';
-import { useAppDispatch, useAppSelector } from '../hooks';
+import { useAppDispatch } from '../hooks';
 import { loginSuccess } from '../stores/authSlice';
 import type { User } from '../types/types';
 
@@ -25,15 +25,6 @@ interface AuthResponse {
   expiresIn: number;
 }
 
-interface UserProfileDTO {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string;
-  avatarUrl?: string;
-  role: string;
-}
-
 interface ErrorResponse {
   error?: string;
   message?: string;
@@ -41,13 +32,10 @@ interface ErrorResponse {
 
 const Login: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   const {
     register,
@@ -56,14 +44,6 @@ const Login: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
-
-  // Tự động chuyển hướng khi đã login
-  useEffect(() => {
-    if (isAuthenticated) {
-      const redirectTo = new URLSearchParams(location.search).get('redirect') || '/';
-      navigate(redirectTo, { replace: true });
-    }
-  }, [isAuthenticated, navigate, location.search]);
 
   // Xử lý OAuth error
   useEffect(() => {

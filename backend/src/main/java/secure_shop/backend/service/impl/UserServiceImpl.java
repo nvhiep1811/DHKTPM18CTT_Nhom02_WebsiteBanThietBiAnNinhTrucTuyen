@@ -120,4 +120,11 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    public boolean updatePassword(String email, String newPassword) {
+        return userRepository.findByEmail(email).map(user -> {
+            user.setPasswordHash(encoder.encode(newPassword));
+            userRepository.save(user);
+            return true;
+        }).orElse(false);
+    }
 }

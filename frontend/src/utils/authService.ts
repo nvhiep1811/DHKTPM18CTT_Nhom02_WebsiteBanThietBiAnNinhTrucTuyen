@@ -72,10 +72,31 @@ export const authService = {
     return token !== null && !this.isTokenExpired();
   },
 
-  changePassword(currentPassword: string, newPassword: string) {
-    return axiosInstance.post("/auth/change-password", {
+  async changePassword(currentPassword: string, newPassword: string) {
+    return await axiosInstance.post("/auth/change-password", {
       currentPassword,
       newPassword,
+    });
+  },
+
+  async verifyToken(token: string) {
+    return await axiosInstance.get("/auth/verify-token", {
+      params: { token },
+    });
+  },
+
+  async forgotPassword(email: string) {
+    return await axiosInstance.post("/auth/forgot-password", null, {
+      params: { email },
+    });
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    return await axiosInstance.post("/auth/reset-password", null, {
+      params: {
+        token,
+        newPassword,
+      },
     });
   },
 };

@@ -7,6 +7,7 @@ import { logout, restoreAuthSuccess } from '../stores/authSlice';
 import { toast } from 'react-toastify';
 import { userApi } from '../utils/api';
 import axiosInstance from '../utils/axiosConfig';
+import { authService } from '../utils/authService';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -96,10 +97,7 @@ const Profile: React.FC = () => {
     }
 
     try {
-      await axiosInstance.post("/auth/change-password", {
-        currentPassword: pwdForm.currentPassword,
-        newPassword: pwdForm.newPassword,
-      });
+      await authService.changePassword(pwdForm.currentPassword, pwdForm.newPassword);
 
       toast.success("Đổi mật khẩu thành công!");
       setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
