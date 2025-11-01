@@ -21,7 +21,7 @@ const Contact: React.FC = () => {
       icon: MapPin,
       title: 'Địa chỉ',
       content: 'số 4 Nguyễn Văn Bảo, Quận Gò Vấp, TP.HCM',
-      link: 'https://maps.google.com'
+      link: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15677.67118362639!2d106.69748834771095!3d10.77885823150119!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f38f9ed887b%3A0x14aded570933994a!2zQ2jhu6MgQuG6v24gVGjDoG5o!5e0!3m2!1svi!2s!4v1678888888888!5m2!1svi!2s'
     },
     {
       icon: Phone,
@@ -298,8 +298,13 @@ const Contact: React.FC = () => {
               viewport={{ once: true }}
               className="space-y-6"
             >
-              <div className="bg-gray-100 rounded-lg overflow-hidden h-[400px]">
-                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d411.91923493908644!2d106.68679319582066!3d10.822155678148924!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3174deb3ef536f31%3A0x8b7bb8b7c956157b!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBDw7RuZyBuZ2hp4buHcCBUUC5IQ00!5e0!3m2!1svi!2s!4v1761831271289!5m2!1svi!2s" width="800" height="600"  loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div className="bg-gray-100 rounded-lg overflow-hidden h-80 md:h-[400px]">
+                <iframe 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.857610747833!2d106.69723331526601!3d10.82220546130835!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317528e54e1837c7%3A0x203d789126e85848!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBDw7RuZyBuZ2hp4buHcCBULSBDaGkgTmjDoW5oIFRwLkjDtSBDaMOtIE1pbmg!5e0!3m2!1svi!2s!4v1678888888888!5m2!1svi!2s" 
+                  loading="lazy" 
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="w-full h-full border-0"
+                ></iframe>
               </div>
 
               <div className="bg-gradient-to-r from-purple-600 to-cyan-500 p-6 rounded-lg text-white">
@@ -358,7 +363,7 @@ const Contact: React.FC = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {branches.map((branch, index) => (
               <motion.div
                 key={index}
