@@ -15,7 +15,12 @@ export default function App() {
 
   return (
     <Theme appearance="inherit" radius="large" scaling="100%">
-      <RouterProvider router={router} />
+      <RouterProvider 
+        router={router} 
+        future={{
+          v7_startTransition: true,
+        }}
+      />
       <ToastContainer
         position="top-right"
         autoClose={3000}
