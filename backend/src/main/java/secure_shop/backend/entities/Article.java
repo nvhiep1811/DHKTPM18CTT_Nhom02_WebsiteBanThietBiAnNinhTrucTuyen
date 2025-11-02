@@ -31,8 +31,8 @@ public class Article {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column(nullable = false)
-    private Instant publishedAt = Instant.now();
+    @Column(nullable = false, updatable = false)
+    private Instant publishedAt;
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -40,4 +40,11 @@ public class Article {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id", nullable = false)
     private User admin;
+
+    @PrePersist
+    public void onCreate() {
+        if (publishedAt == null) {
+            publishedAt = Instant.now();
+        }
+    }
 }

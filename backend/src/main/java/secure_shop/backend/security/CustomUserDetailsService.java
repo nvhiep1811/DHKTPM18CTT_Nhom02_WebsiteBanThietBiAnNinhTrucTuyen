@@ -1,16 +1,14 @@
 package secure_shop.backend.security;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import secure_shop.backend.dto.auth.CustomUserDetails;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.repositories.UserRepository;
 
-import java.util.Collections;
 import java.util.UUID;
 
 /**

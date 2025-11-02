@@ -21,7 +21,7 @@ interface FeaturedProductsProps {
   userRole?: 'guest' | 'user' | 'admin';
 }
 
-const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole = 'guest' }) => {
+const FeaturedProducts: React.FC<FeaturedProductsProps> = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -145,7 +145,6 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole = 'guest' 
             >
               <ProductCard
                 product={product}
-                userRole={userRole}
                 onAddToCart={handleAddToCart}
               />
             </motion.div>

@@ -2,23 +2,32 @@ package secure_shop.backend.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import secure_shop.backend.dto.UserDTO;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
+import secure_shop.backend.enums.Role;
 import secure_shop.backend.mapper.UserMapper;
 import secure_shop.backend.repositories.UserRepository;
 import secure_shop.backend.service.UserService;
+import secure_shop.backend.specification.UserSpecification;
 
-import java.util.List;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -42,7 +51,6 @@ public class UserServiceImpl implements UserService {
         }
 
         User savedUser = userRepository.save(user);
-        log.info("User created: {} (provider: {})", savedUser.getEmail(), savedUser.getProvider());
         return savedUser;
     }
 
@@ -67,9 +75,6 @@ public class UserServiceImpl implements UserService {
         if (req.getProvider() != null) {
             user.setProvider(req.getProvider());
         }
-        if (req.getRole() != null) {
-            user.setRole(req.getRole());
-        }
 
         // Update password if provided
         String newPass = req.getPasswordHash();
@@ -81,14 +86,59 @@ public class UserServiceImpl implements UserService {
         }
 
         User updatedUser = userRepository.save(user);
-        log.info("User updated: {}", updatedUser.getEmail());
         return updatedUser;
     }
 
     @Override
-    public void deleteById(UUID id) {
-        userRepository.deleteById(id);
-        log.info("User deleted: {}", id);
+    public void softDeleteUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getDeletedAt() != null) {
+            throw new RuntimeException("User already deleted");
+        }
+
+        user.setDeletedAt(Instant.now());
+        userRepository.save(user);
+    }
+
+    @Override
+    public UserDTO restoreUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getDeletedAt() == null) {
+            throw new RuntimeException("User is not deleted");
+        }
+
+        user.setDeletedAt(null);
+        return userMapper.mapToDTO(userRepository.save(user));
+    }
+
+    @Override
+    public void disableUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getDeletedAt() != null) {
+            throw new RuntimeException("Cannot disable deleted user. Restore first.");
+        }
+
+        user.setEnabled(false);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void enableUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getDeletedAt() != null) {
+            throw new RuntimeException("Cannot enable deleted user. Restore first.");
+        }
+
+        user.setEnabled(true);
+        userRepository.save(user);
     }
 
     @Override
@@ -98,18 +148,87 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileDTO getUserById(UUID id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public UserProfileDTO getUserProfile(UUID id) {
+        User user = findUserById(id);
 
-        return userMapper.toDTO(user);  // ✅ Convert ngay trong transaction
+        return userMapper.toDTO(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserProfileDTO> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return userMapper.toDTOList(users);  // ✅ Convert trong transaction
+    public UserDTO getUserById(UUID userId) {
+        User user = findUserById(userId);
+        return userMapper.mapToDTO(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserDTO> getAllUsers(
+            Pageable pageable,
+            String search,
+            Role role,
+            Boolean enabled,
+            Boolean includeDeleted,
+            String provider) {
+
+        Specification<User> spec = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        // Tìm kiếm theo tên hoặc email
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(UserSpecification.searchByNameOrEmail(search.trim()));
+        }
+
+        // Lọc theo role
+        if (role != null) {
+            spec = spec.and(UserSpecification.hasRole(role));
+        }
+
+        // Lọc theo trạng thái kích hoạt
+        if (enabled != null) {
+            spec = spec.and(UserSpecification.isEnabled(enabled));
+        }
+
+        // Lọc theo provider (Google, Local, ...)
+        if (provider != null && !provider.isBlank()) {
+            spec = spec.and(UserSpecification.hasProvider(provider.trim()));
+        }
+
+        // Mặc định loại bỏ user đã xóa, trừ khi includeDeleted = true
+        if (includeDeleted == null || !includeDeleted) {
+            spec = spec.and(UserSpecification.isNotDeleted());
+        }
+
+        return userRepository.findAll(spec, pageable)
+                .map(userMapper::mapToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getUserStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        stats.put("totalUsers", userRepository.count());
+        stats.put("activeUsers", userRepository.countByDeletedAtIsNull());
+        stats.put("deletedUsers", userRepository.countByDeletedAtIsNotNull());
+        stats.put("enabledUsers", userRepository.countByEnabledTrueAndDeletedAtIsNull());
+        stats.put("disabledUsers", userRepository.countByEnabledFalseAndDeletedAtIsNull());
+
+        // Count by role
+        Map<String, Long> roleStats = new HashMap<>();
+        for (Role role : Role.values()) {
+            long count = userRepository.countByRoleAndDeletedAtIsNull(role);
+            roleStats.put(role.name(), count);
+        }
+        stats.put("byRole", roleStats);
+
+        // Count by provider
+        Map<String, Long> providerStats = new HashMap<>();
+        providerStats.put("local", userRepository.countByProviderAndDeletedAtIsNull("local"));
+        providerStats.put("google", userRepository.countByProviderAndDeletedAtIsNull("google"));
+        providerStats.put("facebook", userRepository.countByProviderAndDeletedAtIsNull("facebook"));
+        stats.put("byProvider", providerStats);
+
+        return stats;
     }
 
     public void changePassword(User user, String currentPassword, String newPassword) {
@@ -126,5 +245,10 @@ public class UserServiceImpl implements UserService {
             userRepository.save(user);
             return true;
         }).orElse(false);
+    }
+
+    private User findUserById(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

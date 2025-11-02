@@ -78,7 +78,7 @@ const Header: React.FC = () => {
             <NavLink to="/contact" className={navClass}>
               Liên hệ
             </NavLink>
-            {user?.role === "admin" && (
+            {user?.role.toLocaleLowerCase() === "admin" && (
               <NavLink to="/admin" className={navClass}>
                 Quản trị
               </NavLink>
@@ -267,7 +267,7 @@ const Header: React.FC = () => {
                 Liên hệ
               </NavLink>
 
-              {user?.role === "admin" && (
+              {user?.role.toLocaleLowerCase() === "admin" && (
                 <NavLink
                   to="/admin"
                   className={({ isActive }) =>

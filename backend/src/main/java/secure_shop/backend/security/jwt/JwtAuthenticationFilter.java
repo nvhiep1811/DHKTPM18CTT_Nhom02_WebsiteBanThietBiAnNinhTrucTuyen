@@ -12,7 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import secure_shop.backend.dto.auth.CustomUserDetails;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.service.UserService;
 

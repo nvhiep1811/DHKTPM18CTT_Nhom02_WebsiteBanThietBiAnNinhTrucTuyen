@@ -1,4 +1,4 @@
-package secure_shop.backend.config;
+package secure_shop.backend.config.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +63,7 @@ public class SecurityConfig {
                                 "/login/oauth2/**",
                                 "/error"
                         ).permitAll()
+                        .requestMatchers("/api/auth/me").authenticated()
                         // Reset password endpoints - NO authentication required
                         .requestMatchers(
                                 "/api/auth/forgot-password",
@@ -71,8 +72,34 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // User endpoints require authentication
-                        .requestMatchers("/api/auth/me").authenticated()
-                        .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/api/users/me/**").authenticated()
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+
+                        // Address endpoints - AUTHENTICATED
+                        .requestMatchers("/api/addresses/**").authenticated()
+
+                        // Ticket endpoints
+                        .requestMatchers("/api/tickets/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/tickets/**").authenticated()
+
+                        // Article endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/articles", "/api/articles/*").permitAll()
+                        .requestMatchers("/api/articles/**").hasRole("ADMIN")
+
+                        // Brand endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/brands", "/api/brands/*").permitAll()
+                        .requestMatchers("/api/brands/**").hasRole("ADMIN")
+
+                        // Category endpoints
+                        .requestMatchers("/api/categories", "/api/categories/active").permitAll()
+                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
+
+                        // Inventory endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/inventories/**").permitAll()
+                        .requestMatchers("/api/inventories/**").hasRole("ADMIN")
+
+                        // Media endpoints
+                        .requestMatchers("/api/media/**").permitAll()
 
                         // Default: require authentication
                         .anyRequest().authenticated()

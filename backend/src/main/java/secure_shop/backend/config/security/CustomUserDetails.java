@@ -1,4 +1,4 @@
-package secure_shop.backend.dto.auth;
+package secure_shop.backend.config.security;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

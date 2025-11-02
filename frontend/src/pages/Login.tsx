@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,6 +33,7 @@ interface ErrorResponse {
 const Login: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,6 +90,10 @@ const Login: React.FC = () => {
 
       // Step 5: Dispatch action để cập nhật Redux store
       dispatch(loginSuccess({ user, accessToken }));
+
+      if (user.role === 'ADMIN') {
+        navigate('/admin');
+      }
 
       toast.success('Đăng nhập thành công!');
       

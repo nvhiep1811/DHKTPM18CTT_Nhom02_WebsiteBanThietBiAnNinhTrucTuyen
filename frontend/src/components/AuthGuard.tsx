@@ -13,7 +13,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ roles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !roles.includes(user.role.toLocaleLowerCase())) {
     return <Navigate to="/" replace />;
   }
 

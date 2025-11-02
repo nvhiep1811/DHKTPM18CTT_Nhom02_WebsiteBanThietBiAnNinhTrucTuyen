@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.dto.auth.AuthResponse;
 import secure_shop.backend.dto.auth.ChangePasswordRequest;
-import secure_shop.backend.dto.auth.CustomUserDetails;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.auth.LoginRequest;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.security.jwt.JwtService;
@@ -53,6 +53,18 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
         }
         User user = opt.get();
+
+        if (!user.getProvider().equals("local")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Please login using " + user.getProvider());
+        }
+
+        if (user.getDeletedAt() != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User account has been deleted");
+        }
+
+        if (!user.getEnabled()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User account is disabled");
+        }
 
         // generate tokens
         String accessToken = jwtService.generateAccessToken(user);

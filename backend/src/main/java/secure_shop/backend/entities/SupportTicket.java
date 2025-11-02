@@ -2,6 +2,7 @@ package secure_shop.backend.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import secure_shop.backend.enums.TicketStatus;
 
 import java.time.Instant;
@@ -30,6 +31,7 @@ public class SupportTicket {
     private String content;
 
     @Column(nullable = false)
+    @CreationTimestamp
     private Instant createdAt = Instant.now();
 
     @Enumerated(EnumType.STRING)

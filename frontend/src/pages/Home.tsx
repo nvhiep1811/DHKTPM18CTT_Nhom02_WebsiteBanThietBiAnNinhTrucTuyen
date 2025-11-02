@@ -6,15 +6,13 @@ import FeaturedProducts from '../components/FeaturedProducts';
 import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
-  // Mock user role - in real app, this would come from authentication context
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest';
 
   return (
     <div className="min-h-screen bg-white">
       <Header/>
       <main>
         <HeroSection />
-        <FeaturedProducts userRole={userRole} />
+        <FeaturedProducts />
         
         {/* Why Choose Us Section */}
         <section className="py-16 bg-white">

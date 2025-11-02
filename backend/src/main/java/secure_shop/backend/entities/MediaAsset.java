@@ -21,7 +21,7 @@ public class MediaAsset {
 
     private String altText;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 }

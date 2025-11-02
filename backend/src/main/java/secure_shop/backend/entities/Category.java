@@ -1,5 +1,6 @@
 package secure_shop.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -33,10 +34,30 @@ public class Category {
     @Column(length = 500)
     private String imageUrl;
 
-    @Column(nullable = false)
-    private Instant createdAt = Instant.now();
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 
-    @OneToMany(mappedBy = "category")
+    @Column(nullable = false)
+    private Instant updatedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     @Builder.Default
     private Set<Product> products = new HashSet<>();
+
+    @PrePersist
+    public void prePersist() {
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

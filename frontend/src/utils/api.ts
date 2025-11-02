@@ -82,12 +82,12 @@ export const orderApi = {
 // User API
 export const userApi = {
   getProfile: async () => {
-    const response = await axiosInstance.get("/users/profile");
+    const response = await axiosInstance.get("/users/me");
     return response.data;
   },
 
   updateProfile: async (data: any) => {
-    const response = await axiosInstance.put(`/users/${data.id}`, data);
+    const response = await axiosInstance.put(`/users/me`, data);
     return response.data;
   },
 };

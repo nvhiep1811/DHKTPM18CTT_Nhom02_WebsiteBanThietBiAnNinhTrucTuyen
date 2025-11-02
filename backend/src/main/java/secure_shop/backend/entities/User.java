@@ -44,7 +44,8 @@ public class User extends BaseEntity {
     private String avatarUrl;
 
     @Column(length = 50)
-    private String provider; // google, facebook, local
+    @Builder.Default
+    private String provider = "local"; // local, google, facebook
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -1,4 +1,4 @@
-package secure_shop.backend.config;
+package secure_shop.backend.config.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

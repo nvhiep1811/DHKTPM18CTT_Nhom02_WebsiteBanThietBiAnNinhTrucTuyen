@@ -1,21 +1,39 @@
 package secure_shop.backend.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import secure_shop.backend.dto.UserDTO;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
+import secure_shop.backend.enums.Role;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface UserService {
     Optional<User> findById(UUID id);
+
     User createUser(User user);
     User updateUser(UUID id, User user);
-    void deleteById(UUID id);
+    void softDeleteUser(UUID id);
+    UserDTO restoreUser(UUID userId);
+    void disableUser(UUID userId);
+    void enableUser(UUID userId);
+
     Optional<User> findByEmail(String email);
 
-    UserProfileDTO getUserById(UUID id);
-    List<UserProfileDTO> getAllUsers();
+    UserProfileDTO getUserProfile(UUID id);
+    UserDTO getUserById(UUID id);
+
+    Page<UserDTO> getAllUsers(Pageable pageable,
+                                           String search,
+                                           Role role,
+                                           Boolean enabled,
+                                           Boolean includeDeleted,
+                                           String provider);
+    Map<String, Object> getUserStats();
 
     void changePassword(User user, String currentPassword, String newPassword);
 
