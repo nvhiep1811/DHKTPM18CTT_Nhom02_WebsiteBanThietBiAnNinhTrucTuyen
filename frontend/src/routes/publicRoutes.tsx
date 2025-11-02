@@ -11,6 +11,8 @@ import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import GuestRoute from "../routes/GuestRoute";
 import ProtectedRoute from "../routes/ProtectedRoute";
+import Register from "../pages/Register";
+import VerifyEmail from "../pages/VerifyEmail";
 
 export const publicRoutes = {
   path: "/",
@@ -54,6 +56,22 @@ export const publicRoutes = {
       element: (
         <GuestRoute>
           <ResetPassword />
+        </GuestRoute>
+      ),
+    },
+    {
+      path: "register",
+      element: (
+        <GuestRoute>
+          <Register />
+        </GuestRoute>
+      ),
+    },
+    {
+      path: "verify-email",
+      element: (
+        <GuestRoute>
+          <VerifyEmail />
         </GuestRoute>
       ),
     },

@@ -116,11 +116,9 @@ const Contact: React.FC = () => {
     }, 1500);
   };
 
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest';
-
   return (
     <div className="min-h-screen bg-white">
-        <Header userRole={userRole} />
+        <Header />
       {/* Hero Section */}
       <section className="relative h-[300px] bg-gradient-to-r from-purple-600 to-cyan-500 overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-20"></div>

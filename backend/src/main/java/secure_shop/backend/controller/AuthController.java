@@ -2,7 +2,6 @@ package secure_shop.backend.controller;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +15,8 @@ import secure_shop.backend.dto.auth.ChangePasswordRequest;
 import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.auth.LoginRequest;
 import secure_shop.backend.entities.User;
+import secure_shop.backend.exception.ForbiddenException;
+import secure_shop.backend.exception.UnauthorizedException;
 import secure_shop.backend.security.jwt.JwtService;
 import secure_shop.backend.service.PasswordResetService;
 import secure_shop.backend.service.UserService;
@@ -24,7 +25,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -39,108 +40,85 @@ public class AuthController {
 
     // ====== LOGIN ======
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+        // Xác thực tài khoản
         try {
             var token = new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword());
             authenticationManager.authenticate(token);
         } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            throw new UnauthorizedException("Email hoặc mật khẩu không đúng");
         }
 
-        // load user (after successful auth)
-        Optional<User> opt = userService.findByEmail(req.getEmail());
-        if (opt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
-        }
-        User user = opt.get();
+        // Lấy user sau khi xác thực
+        User user = userService.findByEmail(req.getEmail())
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        if (!user.getProvider().equals("local")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Please login using " + user.getProvider());
+        if (!"local".equals(user.getProvider())) {
+            throw new ForbiddenException("Vui lòng đăng nhập bằng " + user.getProvider());
         }
 
         if (user.getDeletedAt() != null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User account has been deleted");
+            throw new ForbiddenException("Tài khoản đã bị xoá");
         }
 
         if (!user.getEnabled()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User account is disabled");
+            throw new ForbiddenException("Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa");
         }
 
-        // generate tokens
+        // Sinh token
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
-        // set refresh token as HttpOnly cookie
+        // Gắn refresh token vào cookie HttpOnly
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(true) // set true in prod (HTTPS). Set false for local http dev if needed.
-                .sameSite("None") // cross-site allowed (FE and BE on different domains)
+                .secure(true)
+                .sameSite("None")
                 .path("/auth/refresh")
                 .maxAge(Duration.ofSeconds(jwtService.getRefreshExpSeconds()))
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
 
-        long expiresIn = jwtService.getAccessExpSeconds();
-
-        return ResponseEntity.ok(new AuthResponse(accessToken, expiresIn));
+        return ResponseEntity.ok(new AuthResponse(accessToken, jwtService.getAccessExpSeconds()));
     }
 
-    // ====== REFRESH ======
+    // ====== REFRESH TOKEN ======
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
-        // read refresh_token cookie
-        String refreshToken = null;
-        if (request.getCookies() != null) {
-            for (Cookie c : request.getCookies()) {
-                if ("refresh_token".equals(c.getName())) {
-                    refreshToken = c.getValue();
-                    break;
-                }
-            }
-        }
+    public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = extractRefreshToken(request);
         if (refreshToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No refresh token");
+            throw new UnauthorizedException("Không tìm thấy refresh token");
         }
 
-        try {
-            DecodedJWT decoded = jwtService.verify(refreshToken);
-
-            // ensure token type is refresh (we sign refresh with claim "type":"refresh")
-            String type = decoded.getClaim("type").asString();
-            if (type == null || !"refresh".equals(type)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token type");
-            }
-
-            UUID userId = UUID.fromString(decoded.getSubject());
-            User user = userService.findById(userId).orElse(null);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
-            }
-
-            // Generate new access (optionally rotate refresh)
-            String newAccess = jwtService.generateAccessToken(user);
-            String newRefresh = jwtService.generateRefreshToken(user);
-
-            // Replace cookie with new refresh (rotate to extend expiry)
-            ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefresh)
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("None")
-                    .path("/auth/refresh")
-                    .maxAge(Duration.ofSeconds(jwtService.getRefreshExpSeconds()))
-                    .build();
-            response.addHeader("Set-Cookie", cookie.toString());
-
-            return ResponseEntity.ok(new AuthResponse(newAccess, jwtService.getAccessExpSeconds()));
-
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid/expired refresh token");
+        DecodedJWT decoded = jwtService.verify(refreshToken);
+        if (!"refresh".equals(decoded.getClaim("type").asString())) {
+            throw new UnauthorizedException("Refresh token không hợp lệ");
         }
+
+        UUID userId = UUID.fromString(decoded.getSubject());
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("Không tìm thấy người dùng"));
+
+        // Sinh token mới
+        String newAccess = jwtService.generateAccessToken(user);
+        String newRefresh = jwtService.generateRefreshToken(user);
+
+        // Thay cookie refresh token
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefresh)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/auth/refresh")
+                .maxAge(Duration.ofSeconds(jwtService.getRefreshExpSeconds()))
+                .build();
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        return ResponseEntity.ok(new AuthResponse(newAccess, jwtService.getAccessExpSeconds()));
     }
 
-    // ====== LOGOUT (xoá cookie) ======
+    // ====== LOGOUT ======
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
+    public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -149,17 +127,18 @@ public class AuthController {
                 .maxAge(0)
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
-        return ResponseEntity.ok().body("Logged out");
+
+        return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
     }
 
+    // ====== GET CURRENT USER ======
     @GetMapping("/me")
     public ResponseEntity<UserProfileDTO> getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Bạn chưa đăng nhập");
         }
 
         User user = userDetails.getUser();
-
         UserProfileDTO dto = UserProfileDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -172,22 +151,18 @@ public class AuthController {
         return ResponseEntity.ok(dto);
     }
 
+    // ====== CHANGE PASSWORD ======
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(
+    public ResponseEntity<Map<String, String>> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ChangePasswordRequest request) {
+            @RequestBody ChangePasswordRequest req) {
 
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+            throw new UnauthorizedException("Bạn chưa đăng nhập");
         }
 
-        User user = userDetails.getUser();
-
-        // Cập nhật mật khẩu mới
-        userService.changePassword(user, request.getCurrentPassword(), request.getNewPassword());
-
-
-        return ResponseEntity.ok("Password changed successfully");
+        userService.changePassword(userDetails.getUser(), req.getCurrentPassword(), req.getNewPassword());
+        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
     }
 
     @PostMapping("/forgot-password")
@@ -206,5 +181,15 @@ public class AuthController {
     public String resetPassword(@RequestParam String token, @RequestParam String newPassword) {
         boolean ok = resetService.resetPassword(token, newPassword);
         return ok ? "Đổi mật khẩu thành công." : "Token không hợp lệ hoặc đã hết hạn.";
+    }
+
+    // ====== Helper ======
+    private String extractRefreshToken(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (Cookie c : request.getCookies()) {
+                if ("refresh_token".equals(c.getName())) return c.getValue();
+            }
+        }
+        return null;
     }
 }

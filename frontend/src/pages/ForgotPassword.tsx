@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Shield, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { authService } from '../utils/authService';
@@ -39,16 +38,6 @@ const ForgotPassword: React.FC = () => {
       setIsSuccess(true);
       toast.success(response.data.message || 'Đã gửi link khôi phục mật khẩu đến email của bạn.');
       
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.message || 
-                            error.response?.data?.error || 
-                            'Có lỗi xảy ra. Vui lòng thử lại!';
-        toast.error(errorMessage);
-      } else {
-        console.error('Forgot password error:', error);
-        toast.error('Không thể kết nối đến server. Vui lòng thử lại!');
-      }
     } finally {
       setIsLoading(false);
     }

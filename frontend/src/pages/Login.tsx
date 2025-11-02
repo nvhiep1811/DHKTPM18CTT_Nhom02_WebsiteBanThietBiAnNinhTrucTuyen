@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Shield, Mail, Lock } from 'lucide-react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import axiosInstance from '../utils/axiosConfig';
@@ -23,11 +22,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 interface AuthResponse {
   accessToken: string;
   expiresIn: number;
-}
-
-interface ErrorResponse {
-  error?: string;
-  message?: string;
 }
 
 const Login: React.FC = () => {
@@ -63,61 +57,39 @@ const Login: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    
+
     try {
-      // Step 1: Login và lấy access token
-      const loginResponse = await axiosInstance.post<AuthResponse>('/auth/login', data);
-      const { accessToken, expiresIn } = loginResponse.data;
+      const { data: loginData } = await axiosInstance.post<AuthResponse>("/auth/login", data);
+      const { accessToken, expiresIn } = loginData;
 
-      // Step 2: Lưu token vào localStorage (để axiosInstance có thể dùng)
-      localStorage.setItem('accessToken', accessToken);
       const expiresAt = Date.now() + expiresIn * 1000;
-      localStorage.setItem('tokenExpiresAt', expiresAt.toString());
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("tokenExpiresAt", expiresAt.toString());
 
-      // Step 3: Gọi API /auth/me để lấy thông tin user đầy đủ
-      const meResponse = await axiosInstance.get<User>('/auth/me');
-      const userProfile = meResponse.data;
+      const { data: meData } = await axiosInstance.get<User>("/auth/me");
 
-      // Step 4: Chuyển đổi sang User type
       const user: User = {
-        id: userProfile.id,
-        email: userProfile.email,
-        name: userProfile.name,
-        phone: userProfile.phone,
-        role: userProfile.role as 'guest' | 'user' | 'admin',
-        avatarUrl: userProfile.avatarUrl,
+        id: meData.id,
+        email: meData.email,
+        name: meData.name,
+        phone: meData.phone,
+        role: meData.role as "guest" | "user" | "admin",
+        avatarUrl: meData.avatarUrl,
       };
 
-      // Step 5: Dispatch action để cập nhật Redux store
       dispatch(loginSuccess({ user, accessToken }));
 
-      if (user.role === 'ADMIN') {
-        navigate('/admin');
+      toast.success("Đăng nhập thành công!");
+
+      if (user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
       }
 
-      toast.success('Đăng nhập thành công!');
-      
-      // Navigation sẽ được xử lý bởi useEffect
-      
     } catch (error) {
-      // Xóa token nếu có lỗi
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('tokenExpiresAt');
-      
-      if (axios.isAxiosError(error)) {
-        const errorData = error.response?.data as ErrorResponse;
-        
-        if (error.response?.status === 401) {
-          toast.error(errorData?.error || 'Email hoặc mật khẩu không đúng!');
-        } else if (error.response?.status === 403) {
-          toast.error(errorData?.error || 'Tài khoản đã bị khóa hoặc vô hiệu hóa!');
-        } else {
-          toast.error(errorData?.error || errorData?.message || 'Đăng nhập thất bại. Vui lòng thử lại!');
-        }
-      } else {
-        console.error('Login error:', error);
-        toast.error('Không thể kết nối đến server. Vui lòng thử lại!');
-      }
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("tokenExpiresAt");
     } finally {
       setIsLoading(false);
     }

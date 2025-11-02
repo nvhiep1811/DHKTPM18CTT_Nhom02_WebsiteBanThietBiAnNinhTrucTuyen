@@ -18,6 +18,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import secure_shop.backend.exception.JwtAuthenticationEntryPoint;
+import secure_shop.backend.security.CustomAccessDeniedHandler;
 import secure_shop.backend.security.jwt.JwtAuthenticationFilter;
 import secure_shop.backend.security.oauth2.OAuth2FailureHandler;
 
@@ -34,6 +36,8 @@ public class SecurityConfig {
     private final AuthenticationProvider authenticationProvider;
     private final AuthenticationSuccessHandler oauthSuccessHandler;
     private final OAuth2FailureHandler oauthFailureHandler;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -124,25 +128,8 @@ public class SecurityConfig {
 
                 // 8. Exception Handling - TRẢ JSON thay vì redirect
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            // Chỉ xử lý nếu không phải OPTIONS
-                            if (!"OPTIONS".equalsIgnoreCase(request.getMethod())) {
-                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                                response.setContentType("application/json;charset=UTF-8");
-                                response.getWriter().write(
-                                        "{\"error\":\"Unauthorized\",\"message\":\"" +
-                                                authException.getMessage() + "\"}"
-                                );
-                            }
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write(
-                                    "{\"error\":\"Forbidden\",\"message\":\"" +
-                                            accessDeniedException.getMessage() + "\"}"
-                            );
-                        })
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler)
                 )
 
                 // 9. Add JWT filter

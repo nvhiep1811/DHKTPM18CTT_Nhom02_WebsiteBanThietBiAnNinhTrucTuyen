@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:12345/api";
 
@@ -63,6 +64,54 @@ axiosInstance.interceptors.response.use(
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }
+    }
+
+    if (axios.isAxiosError(error)) {
+      const { response } = error;
+      const errorData = response?.data;
+
+      switch (response?.status) {
+        case 400:
+          if (errorData?.details) {
+            Object.values(errorData.details).forEach((msg) =>
+              toast.error(String(msg))
+            );
+          } else {
+            toast.error(errorData?.message || "Dữ liệu không hợp lệ!");
+          }
+          break;
+
+        case 401:
+          toast.error(errorData?.message || "Email hoặc mật khẩu không đúng!");
+          break;
+
+        case 403:
+          toast.error(
+            errorData?.message ||
+              "Tài khoản bị khóa hoặc không có quyền truy cập!"
+          );
+          break;
+
+        case 404:
+          toast.error(errorData?.message || "Không tìm thấy tài nguyên!");
+          break;
+
+        case 409:
+          toast.error(errorData?.message || "Email đã được sử dụng!");
+          break;
+
+        case 500:
+          toast.error(
+            errorData?.message || "Lỗi máy chủ. Vui lòng thử lại sau!"
+          );
+          break;
+
+        default:
+          toast.error(errorData?.message || "Đã xảy ra lỗi không xác định!");
+      }
+    } else {
+      console.error("Unknown error:", error);
+      toast.error("Không thể kết nối đến server. Vui lòng thử lại!");
     }
 
     return Promise.reject(error);
