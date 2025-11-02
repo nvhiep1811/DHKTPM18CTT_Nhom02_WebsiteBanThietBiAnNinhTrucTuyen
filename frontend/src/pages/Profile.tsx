@@ -13,6 +13,7 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('account');
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
@@ -133,22 +134,48 @@ const Profile: React.FC = () => {
     { id: 'B67890', date: '2025-01-03', status: 'Hoàn thành', total: '1.200.000đ' }
   ];
 
+  const handleMenuItemClick = (key: string) => {
+    setActiveTab(key);
+    setShowMobileMenu(false);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'account':
         return (
           <form onSubmit={handleFormSubmit}>
             <h2 className="text-xl font-semibold text-zinc-800 mb-4">Thông tin cá nhân</h2>
-            <p className="text-gray-600 mb-2">Email: {userEmail}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input className="border p-2 rounded" value={formData.name} name="name" onChange={handleInputChange} placeholder="Họ tên" />
-              <input className="border p-2 rounded" value={formData.phone} name="phone" onChange={handleInputChange} placeholder="Số điện thoại" />
-              <input className="border p-2 rounded" placeholder="Ngày sinh" type="date" />
-              <select className="border p-2 rounded">
-                <option>Giới tính</option><option>Nam</option><option>Nữ</option><option>Khác</option>
+            <p className="text-gray-600 mb-4 text-sm sm:text-base">Email: {userEmail}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <input 
+                className="border p-2 rounded text-sm sm:text-base" 
+                value={formData.name} 
+                name="name" 
+                onChange={handleInputChange} 
+                placeholder="Họ tên" 
+              />
+              <input 
+                className="border p-2 rounded text-sm sm:text-base" 
+                value={formData.phone} 
+                name="phone" 
+                onChange={handleInputChange} 
+                placeholder="Số điện thoại" 
+              />
+              <input 
+                className="border p-2 rounded text-sm sm:text-base" 
+                placeholder="Ngày sinh" 
+                type="date" 
+              />
+              <select className="border p-2 rounded text-sm sm:text-base">
+                <option>Giới tính</option>
+                <option>Nam</option>
+                <option>Nữ</option>
+                <option>Khác</option>
               </select>
             </div>
-            <button className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">Lưu thay đổi</button>
+            <button className="mt-4 bg-purple-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-purple-700 w-full sm:w-auto text-sm sm:text-base">
+              Lưu thay đổi
+            </button>
           </form>
         );
 
@@ -157,16 +184,18 @@ const Profile: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Địa chỉ của tôi</h2>
             {sampleAddresses.map(addr => (
-              <div key={addr.id} className="border rounded p-4 mb-3 bg-white shadow-sm flex justify-between items-center">
-                <div>
-                  <p className="font-bold">{addr.name} ({addr.phone})</p>
-                  <p className="text-gray-600 text-sm">{addr.address}</p>
-                  {addr.default && <span className="text-purple-600 text-xs font-semibold">Mặc định</span>}
+              <div key={addr.id} className="border rounded p-3 sm:p-4 mb-3 bg-white shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <div className="flex-1">
+                  <p className="font-bold text-sm sm:text-base">{addr.name} ({addr.phone})</p>
+                  <p className="text-gray-600 text-xs sm:text-sm mt-1">{addr.address}</p>
+                  {addr.default && <span className="text-purple-600 text-xs font-semibold inline-block mt-1">Mặc định</span>}
                 </div>
-                <button className="text-purple-600">Sửa</button>
+                <button className="text-purple-600 text-sm self-start sm:self-auto">Sửa</button>
               </div>
             ))}
-            <button className="mt-3 bg-purple-500 text-white px-4 py-2 rounded">+ Thêm địa chỉ</button>
+            <button className="mt-3 bg-purple-500 text-white px-4 py-2 rounded w-full sm:w-auto text-sm sm:text-base">
+              + Thêm địa chỉ
+            </button>
           </div>
         );
 
@@ -175,16 +204,18 @@ const Profile: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Phương thức thanh toán</h2>
             {samplePayments.map(pay => (
-              <div key={pay.id} className="border rounded p-4 mb-3 bg-white shadow-sm flex justify-between items-center">
-                <div>
-                  <p className="font-bold">{pay.type}</p>
-                  <p className="text-gray-600 text-sm">{pay.card}</p>
-                  {pay.default && <span className="text-purple-600 text-xs font-semibold">Mặc định</span>}
+              <div key={pay.id} className="border rounded p-3 sm:p-4 mb-3 bg-white shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <div className="flex-1">
+                  <p className="font-bold text-sm sm:text-base">{pay.type}</p>
+                  <p className="text-gray-600 text-xs sm:text-sm mt-1">{pay.card}</p>
+                  {pay.default && <span className="text-purple-600 text-xs font-semibold inline-block mt-1">Mặc định</span>}
                 </div>
-                <button className="text-purple-600">Sửa</button>
+                <button className="text-purple-600 text-sm self-start sm:self-auto">Sửa</button>
               </div>
             ))}
-            <button className="mt-3 bg-cyan-500 text-white px-4 py-2 rounded">+ Thêm phương thức</button>
+            <button className="mt-3 bg-cyan-500 text-white px-4 py-2 rounded w-full sm:w-auto text-sm sm:text-base">
+              + Thêm phương thức
+            </button>
           </div>
         );
 
@@ -193,14 +224,18 @@ const Profile: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Đơn hàng của tôi</h2>
             {sampleOrders.map(order => (
-              <div key={order.id} className="border p-4 rounded bg-white shadow-sm mb-3">
-                <div className="flex justify-between">
-                  <p><span className="font-semibold">Mã đơn:</span> {order.id}</p>
-                  <span className="text-sm text-gray-500">{order.date}</span>
+              <div key={order.id} className="border p-3 sm:p-4 rounded bg-white shadow-sm mb-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                  <p className="text-sm sm:text-base">
+                    <span className="font-semibold">Mã đơn:</span> {order.id}
+                  </p>
+                  <span className="text-xs sm:text-sm text-gray-500">{order.date}</span>
                 </div>
-                <p className="mt-1 text-sm">Trạng thái: <span className="text-purple-600 font-semibold">{order.status}</span></p>
-                <p className="mt-1 font-bold">Tổng tiền: {order.total}</p>
-                <button className="mt-2 text-purple-600 text-sm">Xem chi tiết</button>
+                <p className="mt-1 text-xs sm:text-sm">
+                  Trạng thái: <span className="text-purple-600 font-semibold">{order.status}</span>
+                </p>
+                <p className="mt-1 font-bold text-sm sm:text-base">Tổng tiền: {order.total}</p>
+                <button className="mt-2 text-purple-600 text-xs sm:text-sm">Xem chi tiết</button>
               </div>
             ))}
           </div>
@@ -210,14 +245,14 @@ const Profile: React.FC = () => {
         return (
           <div>
             <h2 className="text-xl font-semibold mb-4">Đổi mật khẩu</h2>
-            <div className="space-y-3 max-w-md">
+            <div className="space-y-3 max-w-full sm:max-w-md">
               <input
                 ref={currentPwdRef}
                 type="password"
                 name="currentPassword"
                 value={pwdForm.currentPassword}
                 onChange={handlePwdInputChange}
-                className="border p-2 rounded w-full"
+                className="border p-2 rounded w-full text-sm sm:text-base"
                 placeholder="Mật khẩu hiện tại"
               />
               <input
@@ -226,7 +261,7 @@ const Profile: React.FC = () => {
                 name="newPassword"
                 value={pwdForm.newPassword}
                 onChange={handlePwdInputChange}
-                className="border p-2 rounded w-full"
+                className="border p-2 rounded w-full text-sm sm:text-base"
                 placeholder="Mật khẩu mới"
               />
               <input
@@ -235,13 +270,13 @@ const Profile: React.FC = () => {
                 name="confirmPassword"
                 value={pwdForm.confirmPassword}
                 onChange={handlePwdInputChange}
-                className="border p-2 rounded w-full"
+                className="border p-2 rounded w-full text-sm sm:text-base"
                 placeholder="Nhập lại mật khẩu mới"
               />
             </div>
             <button
               onClick={handleChangePassword}
-              className="mt-4 bg-cyan-500 text-white px-6 py-2 rounded-lg hover:bg-cyan-600"
+              className="mt-4 bg-cyan-500 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-cyan-600 w-full sm:w-auto text-sm sm:text-base"
             >
               Đổi mật khẩu
             </button>
@@ -259,15 +294,43 @@ const Profile: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-white">
       <Header />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex gap-8 w-full">
-        <aside className="w-64 border-r pr-4 hidden sm:block">
-          <h3 className="text-lg font-bold text-zinc-700 mb-4">Tài khoản</h3>
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 flex flex-col lg:flex-row gap-4 sm:gap-8 w-full">
+        {/* Mobile Menu Button */}
+        <div className="lg:hidden mb-4">
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center justify-between"
+          >
+            <span>Menu tài khoản</span>
+            <svg 
+              className={`w-5 h-5 transition-transform ${showMobileMenu ? 'rotate-180' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Sidebar - Desktop & Mobile */}
+        <aside className={`
+          ${showMobileMenu ? 'block' : 'hidden'} 
+          lg:block 
+          w-full lg:w-64 
+          lg:border-r lg:pr-4 
+          mb-4 lg:mb-0
+        `}>
+          <h3 className="text-lg font-bold text-zinc-700 mb-4 hidden lg:block">Tài khoản</h3>
           <ul className="space-y-2">
             {menu.map(m => (
               <li key={m.key}>
                 <button 
-                  onClick={() => setActiveTab(m.key)} 
-                  className={`w-full text-left px-3 py-2 rounded hover:bg-purple-100 ${activeTab === m.key ? 'bg-purple-200 font-semibold' : 'text-gray-700'}`}
+                  onClick={() => handleMenuItemClick(m.key)}
+                  className={`
+                    w-full text-left px-3 py-2 rounded hover:bg-purple-100 text-sm sm:text-base
+                    ${activeTab === m.key ? 'bg-purple-200 font-semibold' : 'text-gray-700'}
+                  `}
                 >
                   {m.label}
                 </button>
@@ -276,7 +339,7 @@ const Profile: React.FC = () => {
             <li>
               <button 
                 onClick={handleLogout} 
-                className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100"
+                className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 text-sm sm:text-base"
               >
                 Đăng xuất
               </button>
@@ -284,15 +347,15 @@ const Profile: React.FC = () => {
           </ul>
         </aside>
 
-        {/* THAY ĐỔI Ở ĐÂY: Thêm class 'w-0' */}
-        <section className="flex-1 w-0 bg-white rounded-xl shadow p-6 border">
+        {/* Content Section */}
+        <section className="flex-1 min-w-0 bg-white rounded-xl shadow p-4 sm:p-6 border">
           {renderContent()}
         </section>
       </main>
 
       <Footer />
     </div>
-);
+  );
 };
 
 export default Profile;
