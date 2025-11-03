@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
-import { Filter, Search, Grid, List } from 'lucide-react';
+import { Filter, Search, Grid, List, Plus, X, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 import { toast } from 'react-toastify';
@@ -23,6 +23,7 @@ interface Product {
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,15 @@ const Products: React.FC = () => {
   const [sortBy, setSortBy] = useState('name');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newProductData, setNewProductData] = useState({
+    name: '',
+    price: '',
+    category: '',
+    stock: '',
+    image: '',
+    description: ''
+  });
 
   // Get user role from Redux store
   const userRole = useSelector((state: any) => state.auth.user?.role || 'guest');
@@ -178,6 +188,36 @@ const Products: React.FC = () => {
     }
   };
 
+  const handleAddProduct = () => {
+    if (!newProductData.name || !newProductData.price || !newProductData.category) {
+      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc!');
+      return;
+    }
+
+    const product: Product = {
+      id: Date.now().toString(),
+      name: newProductData.name,
+      price: parseFloat(newProductData.price),
+      category: newProductData.category,
+      image: newProductData.image || 'https://via.placeholder.com/400x300?text=No+Image',
+      rating: 0,
+      reviewCount: 0,
+      inStock: parseInt(newProductData.stock) > 0
+    };
+
+    setProducts([...products, product]);
+    setNewProductData({
+      name: '',
+      price: '',
+      category: '',
+      stock: '',
+      image: '',
+      description: ''
+    });
+    setShowAddModal(false);
+    toast.success('Đã thêm sản phẩm thành công!');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -192,6 +232,15 @@ const Products: React.FC = () => {
                 Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
               </p>
             </div>
+            {userRole === 'admin' && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Thêm sản phẩm
+              </button>
+            )}
           </div>
         </div>
 
@@ -333,6 +382,121 @@ const Products: React.FC = () => {
       </main>
 
       <Footer />
+
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm sản phẩm mới</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên sản phẩm *
+                </label>
+                <input
+                  type="text"
+                  value={newProductData.name}
+                  onChange={(e) => setNewProductData({...newProductData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập tên sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={newProductData.price}
+                  onChange={(e) => setNewProductData({...newProductData, price: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập giá sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Danh mục *
+                </label>
+                <select
+                  value={newProductData.category}
+                  onChange={(e) => setNewProductData({...newProductData, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Chọn danh mục</option>
+                  <option value="Camera an ninh">Camera an ninh</option>
+                  <option value="Hệ thống báo động">Hệ thống báo động</option>
+                  <option value="Kiểm soát ra vào">Kiểm soát ra vào</option>
+                  <option value="Thiết bị thông minh">Thiết bị thông minh</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tồn kho
+                </label>
+                <input
+                  type="number"
+                  value={newProductData.stock}
+                  onChange={(e) => setNewProductData({...newProductData, stock: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập số lượng tồn kho"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hình ảnh (URL)
+                </label>
+                <input
+                  type="url"
+                  value={newProductData.image}
+                  onChange={(e) => setNewProductData({...newProductData, image: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập URL hình ảnh"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <textarea
+                  value={newProductData.description}
+                  onChange={(e) => setNewProductData({...newProductData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Nhập mô tả sản phẩm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                Thêm sản phẩm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -134,7 +134,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           >
             Xem chi tiết
           </Link>
-          {product.inStock && userRole !== 'admin' && (
+          {product.inStock && (
             <button
               onClick={handleAddToCart}
               className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
