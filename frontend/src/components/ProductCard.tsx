@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Eye, Star } from 'lucide-react';
+import { ShoppingCart, Eye, Star, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Product {
@@ -19,11 +19,14 @@ interface ProductCardProps {
   product: Product;
   userRole?: 'guest' | 'user' | 'admin';
   onAddToCart?: (product: Product) => void;
+  onDeleteProduct?: (productId: string) => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ 
   product, 
-  onAddToCart 
+  userRole = 'guest',
+  onAddToCart,
+  onDeleteProduct
 }) => {
   const handleAddToCart = async () => {
     await onAddToCart?.(product);
@@ -39,7 +42,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <motion.div
       whileHover={{ y: -5 }}
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col"
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col group relative"
     >
 
       <div className="relative">
@@ -59,14 +62,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-white font-semibold">Hết hàng</span>
           </div>
         )}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Link
-            to={`/products/${product.id}`}
-            className="bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-colors"
+
+        {/* Eye icon for all users - always visible on hover */}
+        <Link
+          to={`/products/${product.id}`}
+          className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-colors opacity-0 group-hover:opacity-100"
+        >
+          <Eye className="h-4 w-4 text-zinc-800" />
+        </Link>
+
+        {/* Admin delete button */}
+        {userRole === 'admin' && (
+          <button
+            onClick={() => onDeleteProduct?.(product.id)}
+            className="absolute top-2 right-14 bg-red-600 p-2 rounded-full shadow-md hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
+            aria-label="Xóa sản phẩm"
           >
-            <Eye className="h-4 w-4 text-zinc-800" />
-          </Link>
-        </div>
+            <Trash2 className="h-4 w-4 text-white" />
+          </button>
+        )}
       </div>
 
       <div className="p-4">
@@ -120,7 +134,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           >
             Xem chi tiết
           </Link>
-          {product.inStock && (
+          {product.inStock && userRole !== 'admin' && (
             <button
               onClick={handleAddToCart}
               className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"

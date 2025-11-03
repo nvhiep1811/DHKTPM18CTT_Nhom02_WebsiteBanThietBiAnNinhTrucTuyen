@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 interface Product {
   id: string;
@@ -21,9 +22,13 @@ interface FeaturedProductsProps {
   userRole?: 'guest' | 'user' | 'admin';
 }
 
-const FeaturedProducts: React.FC<FeaturedProductsProps> = () => {
+const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserRole }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Get user role from Redux store or props
+  const reduxUserRole = useSelector((state: any) => state.auth.user?.role || 'guest');
+  const userRole = propUserRole || reduxUserRole;
 
   // Mock data - In real app, this would be an API call
   useEffect(() => {
@@ -145,6 +150,7 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = () => {
             >
               <ProductCard
                 product={product}
+                userRole={userRole}
                 onAddToCart={handleAddToCart}
               />
             </motion.div>

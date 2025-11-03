@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
@@ -31,7 +32,8 @@ const Products: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
 
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest';
+  // Get user role from Redux store
+  const userRole = useSelector((state: any) => state.auth.user?.role || 'guest');
 
   const categories = [
     { id: 'all', name: 'Tất cả sản phẩm' },
@@ -159,13 +161,20 @@ const Products: React.FC = () => {
     setSearchParams(searchParams);
   };
 
-  const handleAddToCart = async (product) => {
+  const handleAddToCart = async (product: Product) => {
     const success = await cartService.addToCart(product);
     if (success) {
-      toast.success(`Đã thêm sản phẩm vào giỏ hàng!`);
+      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`);
       window.dispatchEvent(new Event('cartUpdated'));
     } else {
       toast.error('Thêm vào giỏ hàng thất bại. Vui lòng thử lại.');
+    }
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+      setProducts(products.filter(p => p.id !== productId));
+      toast.success('Đã xóa sản phẩm thành công!');
     }
   };
 
@@ -176,10 +185,14 @@ const Products: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-800 mb-4">Sản Phẩm An Ninh</h1>
-          <p className="text-gray-600">
-            Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
-          </p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-zinc-800 mb-4">Sản Phẩm An Ninh</h1>
+              <p className="text-gray-600">
+                Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -303,11 +316,12 @@ const Products: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                       >
-                        <ProductCard
-                          product={product}
-                          userRole={userRole}
-                          onAddToCart={handleAddToCart}
-                        />
+                      <ProductCard
+                        product={product}
+                        userRole={userRole}
+                        onAddToCart={handleAddToCart}
+                        onDeleteProduct={handleDeleteProduct}
+                      />
                       </motion.div>
                     ))}
                   </motion.div>

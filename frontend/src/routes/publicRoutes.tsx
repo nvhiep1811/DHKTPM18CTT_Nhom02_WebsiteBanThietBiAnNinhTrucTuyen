@@ -10,7 +10,7 @@ import Profile from "../pages/Profile";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import GuestRoute from "../routes/GuestRoute";
-import ProtectedRoute from "../routes/ProtectedRoute";
+import UserGuard from "../components/UserGuard";
 import Register from "../pages/Register";
 import VerifyEmail from "../pages/VerifyEmail";
 
@@ -80,9 +80,9 @@ export const publicRoutes = {
     {
       path: "profile",
       element: (
-        <ProtectedRoute>
+        <UserGuard>
           <Profile />
-        </ProtectedRoute>
+        </UserGuard>
       ),
     },
 
