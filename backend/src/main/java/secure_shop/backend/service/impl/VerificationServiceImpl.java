@@ -63,60 +63,60 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     @Override
-public boolean verifyEmail(String rawToken) {
-    System.out.println("🔍 [VERIFY] Starting verification for token: " + rawToken.substring(0, 8) + "...");
-    
-    String hashedToken = HashUtil.sha256(rawToken);
-    String userId = redisTemplate.opsForValue().get("verify_token:" + hashedToken);
+    public boolean verifyEmail(String rawToken) {
+        System.out.println("🔍 [VERIFY] Starting verification for token: " + rawToken.substring(0, 8) + "...");
 
-    if (userId == null) {
-        System.out.println("❌ [VERIFY] Token not found in Redis - already used or expired");
-        
+        String hashedToken = HashUtil.sha256(rawToken);
+        String userId = redisTemplate.opsForValue().get("verify_token:" + hashedToken);
+
+        if (userId == null) {
+            System.out.println("❌ [VERIFY] Token not found in Redis - already used or expired");
+
+            // ✅ Kiểm tra xem user đã enabled chưa
+            // Nếu đã enabled thì coi như đã verify thành công rồi
+            // (Tránh lỗi khi user click link 2 lần)
+
+            return false; // Hoặc throw exception với message rõ ràng hơn
+        }
+
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            System.out.println("❌ [VERIFY] Invalid UUID format: " + userId);
+            return false;
+        }
+
+        User user = userRepository.findById(userUuid).orElse(null);
+
+        if (user == null) {
+            System.out.println("❌ [VERIFY] User not found with ID: " + userUuid);
+            return false;
+        }
+
         // ✅ Kiểm tra xem user đã enabled chưa
-        // Nếu đã enabled thì coi như đã verify thành công rồi
-        // (Tránh lỗi khi user click link 2 lần)
-        
-        return false; // Hoặc throw exception với message rõ ràng hơn
-    }
+        if (Boolean.TRUE.equals(user.getEnabled())) {
+            System.out.println("⚠️ [VERIFY] User already verified: " + user.getEmail());
 
-    UUID userUuid;
-    try {
-        userUuid = UUID.fromString(userId);
-    } catch (IllegalArgumentException e) {
-        System.out.println("❌ [VERIFY] Invalid UUID format: " + userId);
-        return false;
-    }
+            // Xóa token cũ nếu còn
+            redisTemplate.delete("verify_token:" + hashedToken);
+            redisTemplate.delete("verify_email:" + user.getEmail());
 
-    User user = userRepository.findById(userUuid).orElse(null);
+            // Vẫn return true vì user đã được verify rồi
+            return true;
+        }
 
-    if (user == null) {
-        System.out.println("❌ [VERIFY] User not found with ID: " + userUuid);
-        return false;
-    }
+        System.out.println("✅ [VERIFY] Activating user: " + user.getEmail());
+        user.setEnabled(true);
+        userRepository.save(user);
 
-    // ✅ Kiểm tra xem user đã enabled chưa
-    if (Boolean.TRUE.equals(user.getEnabled())) {
-        System.out.println("⚠️ [VERIFY] User already verified: " + user.getEmail());
-        
-        // Xóa token cũ nếu còn
+        // Xóa token đã sử dụng
         redisTemplate.delete("verify_token:" + hashedToken);
         redisTemplate.delete("verify_email:" + user.getEmail());
-        
-        // Vẫn return true vì user đã được verify rồi
+
+        System.out.println("✅ [VERIFY] Verification completed successfully");
         return true;
     }
-
-    System.out.println("✅ [VERIFY] Activating user: " + user.getEmail());
-    user.setEnabled(true);
-    userRepository.save(user);
-
-    // Xóa token đã sử dụng
-    redisTemplate.delete("verify_token:" + hashedToken);
-    redisTemplate.delete("verify_email:" + user.getEmail());
-    
-    System.out.println("✅ [VERIFY] Verification completed successfully");
-    return true;
-}
 
     @Override
     public void resendVerificationEmail(String email) {

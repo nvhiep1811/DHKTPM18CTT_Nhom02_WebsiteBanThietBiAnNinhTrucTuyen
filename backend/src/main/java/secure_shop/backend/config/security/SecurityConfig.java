@@ -63,8 +63,8 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
                                 "/api/auth/register",
-                                "/api/auth/verify-email",          // ← THÊM
-                                "/api/auth/resend-verification",    // ← THÊM
+                                "/api/auth/verify-email",
+                                "/api/auth/resend-verification",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/error"
@@ -89,11 +89,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/tickets/**").authenticated()
 
                         // Article endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/articles", "/api/articles/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/articles", "/api/articles/**").permitAll()
                         .requestMatchers("/api/articles/**").hasRole("ADMIN")
 
                         // Brand endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/brands", "/api/brands/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/brands", "/api/brands/**").permitAll()
                         .requestMatchers("/api/brands/**").hasRole("ADMIN")
 
                         // Category endpoints

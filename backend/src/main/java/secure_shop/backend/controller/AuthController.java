@@ -6,6 +6,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -102,6 +103,8 @@ public class AuthController {
             authenticationManager.authenticate(token);
         } catch (BadCredentialsException ex) {
             throw new UnauthorizedException("Email hoặc mật khẩu không đúng");
+        } catch (DisabledException ex) {
+            throw new ForbiddenException("Tài khoản chưa được kích hoạt");
         }
 
         // Lấy user sau khi xác thực
@@ -111,13 +114,8 @@ public class AuthController {
         if (!"local".equals(user.getProvider())) {
             throw new ForbiddenException("Vui lòng đăng nhập bằng " + user.getProvider());
         }
-
         if (user.getDeletedAt() != null) {
             throw new ForbiddenException("Tài khoản đã bị xoá");
-        }
-
-        if (!user.getEnabled()) {
-            throw new ForbiddenException("Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa");
         }
 
         // Sinh token

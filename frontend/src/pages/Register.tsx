@@ -18,7 +18,10 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Mật khẩu phải có ít nhất 1 chữ thường')
     .regex(/[0-9]/, 'Mật khẩu phải có ít nhất 1 chữ số'),
   confirmPassword: z.string(),
-  name: z.string().min(2, 'Tên phải có ít nhất 2 ký tự'),
+  name: z.string()
+    .min(2, 'Tên phải có ít nhất 2 ký tự')
+    .max(50, 'Tên không được vượt quá 50 ký tự')
+    .regex(/^[a-zA-ZÀ-ỹ\s]+$/, 'Tên chỉ được chứa chữ cái và khoảng trắng'),
   phone: z.string()
     .regex(/^(\+84|0)[0-9]{9}$/, 'Số điện thoại không hợp lệ')
     .optional()

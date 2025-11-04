@@ -66,9 +66,7 @@ const ResetPassword: React.FC = () => {
           toast.error('Link đã hết hạn hoặc không hợp lệ');
         }
       } catch (error) {
-        console.error('Token verification error:', error);
         setIsTokenValid(false);
-        toast.error('Link đã hết hạn hoặc không hợp lệ');
       } finally {
         setIsVerifying(false);
       }

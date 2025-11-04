@@ -114,8 +114,8 @@ public class GlobalExceptionHandler {
         
         // Gọi constructor đầy đủ 
         ErrorResponse errorResponse = new ErrorResponse(
-                ex.getMessage(),                          // String message
                 HttpStatus.CONFLICT.getReasonPhrase(),    // String details/error
+                ex.getMessage(),                          // String message
                 request.getRequestURI(),                  // String path
                 HttpStatus.CONFLICT.value(),              // int status
                 null,                                     // Map<String, String> validationErrors
