@@ -33,14 +33,10 @@ const VerifyEmail: React.FC = () => {
         }
 
         hasVerified.current = true;
-
-        console.log('🔍 [VERIFY] Calling API with token:', token);
         
-        const response = await axiosInstance.get('/auth/verify-email', { 
+        await axiosInstance.get('/auth/verify-email', { 
           params: { token } 
         });
-
-        console.log('✅ [VERIFY] Response:', response.data);
 
         // ✅ FIX: Nếu API trả về 200 → xác thực thành công
         setState('success');
@@ -60,25 +56,18 @@ const VerifyEmail: React.FC = () => {
 
         return () => clearInterval(timer);
 
-      } catch (err: any) {
-        console.error('❌ [VERIFY] Error:', err);
-        console.error('❌ [VERIFY] Error response:', err.response?.data);
-        
-        // ✅ Xử lý các trường hợp lỗi
+      } catch (err: any) {        
         if (err.response?.status === 410) {
           setState('expired');
           setErrorMessage('Link xác thực đã hết hạn.');
-          toast.error('Link xác thực đã hết hạn.');
         } else if (err.response?.status === 400) {
           setState('error');
           const message = err.response?.data?.message || 'Link xác thực không hợp lệ hoặc đã hết hạn.';
           setErrorMessage(message);
-          toast.error(message);
         } else {
           setState('error');
           const message = err.response?.data?.message || 'Đã xảy ra lỗi khi xác thực.';
           setErrorMessage(message);
-          toast.error(message);
         }
       }
     };
@@ -99,14 +88,12 @@ const VerifyEmail: React.FC = () => {
       
       const response = await axiosInstance.post('/auth/resend-verification', {
         email: resendEmail.trim()
-      });
+      });      
 
-      if (response.data.success) {
-        toast.success('Email xác thực đã được gửi lại!');
+      if (response) {
+        toast.success(response.data.message || 'Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư đến của bạn.');
         setResendEmail('');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Không thể gửi lại email');
     } finally {
       setIsResending(false);
     }

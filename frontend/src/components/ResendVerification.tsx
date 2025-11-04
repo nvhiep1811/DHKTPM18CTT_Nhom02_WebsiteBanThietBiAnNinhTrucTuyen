@@ -10,20 +10,22 @@ interface ResendVerificationProps {
 const ResendVerification: React.FC<ResendVerificationProps> = ({ email: initialEmail }) => {
   const [email, setEmail] = useState(initialEmail || '');
   const [isLoading, setIsLoading] = useState(false);
+  const emailRef = React.useRef<HTMLInputElement>(null);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email) {
-      toast.error('Vui lòng nhập email');
+      toast.warn('Vui lòng nhập email');
+      emailRef.current?.focus();
       return;
     }
 
     setIsLoading(true);
     
     try {
-      await axiosInstance.post('/auth/resend-verification', null, {
-        params: { email }
+      await axiosInstance.post('/auth/resend-verification', {
+        email: email.trim()
       });
       
       toast.success('Email xác thực đã được gửi lại! Vui lòng kiểm tra hộp thư.');
@@ -47,6 +49,7 @@ const ResendVerification: React.FC<ResendVerificationProps> = ({ email: initialE
             <Mail className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            ref={emailRef}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

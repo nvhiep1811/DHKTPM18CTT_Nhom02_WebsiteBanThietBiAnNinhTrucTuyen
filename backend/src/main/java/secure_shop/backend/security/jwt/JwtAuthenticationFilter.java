@@ -17,6 +17,7 @@ import secure_shop.backend.entities.User;
 import secure_shop.backend.service.UserService;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,21 +29,53 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserService userService;
 
+    private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
+            // AUTH
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/refresh",
+            "/api/auth/logout",
+            "/api/auth/register",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
+            "/api/auth/forgot-password",
+            "/api/auth/verify-token",
+            "/api/auth/reset-password",
+
+            // PUBLIC CONTENT
+            "/api/articles/**",
+            "/api/brands",
+            "/api/brands/**",
+            "/api/categories",
+            "/api/categories/active",
+            "/api/inventories/**",
+            "/api/media/**",
+
+            // OAUTH & ERRORS
+            "/oauth2/",
+            "/login/oauth2/",
+            "/error"
+    );
+
+    private boolean isPublicEndpoint(String path) {
+        return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain)
             throws ServletException, IOException {
 
-        // QUAN TRỌNG: BỎ QUA OPTIONS requests (CORS preflight)
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             log.debug("OPTIONS request detected - skipping JWT authentication");
             chain.doFilter(request, response);
             return;
         }
 
-        // Skip JWT validation for public endpoints
         String path = request.getRequestURI();
+        log.debug("JwtAuthFilter processing path={}, isPublic={}", path, isPublicEndpoint(path));
+
         if (isPublicEndpoint(path)) {
             log.debug("Public endpoint: {} - skipping JWT authentication", path);
             chain.doFilter(request, response);
@@ -62,9 +95,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             DecodedJWT decoded = jwtService.verify(token);
 
-            // Check if this is an access token (not refresh)
             String tokenType = decoded.getClaim("type").asString();
-            if (tokenType != null && "refresh".equals(tokenType)) {
+            if ("refresh".equals(tokenType)) {
                 log.warn("Refresh token used as access token");
                 chain.doFilter(request, response);
                 return;
@@ -73,9 +105,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userId = decoded.getSubject();
             log.debug("Token verified for user ID: {}", userId);
 
-            // Load user from database
             Optional<User> userOpt = userService.findById(UUID.fromString(userId));
-
             if (userOpt.isEmpty()) {
                 log.warn("User not found for token subject: {}", userId);
                 chain.doFilter(request, response);
@@ -83,44 +113,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             User user = userOpt.get();
-
-            // QUAN TRỌNG: Wrap User trong CustomUserDetails
             CustomUserDetails userDetails = new CustomUserDetails(user);
 
-            // Create authentication token với CustomUserDetails
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails,  // Principal phải là CustomUserDetails
-                            null,         // Credentials
-                            userDetails.getAuthorities()  // Authorities từ CustomUserDetails
-                    );
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
-
-            // Set authentication vào SecurityContext
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            log.debug("Successfully authenticated user: {} with authorities: {}",
-                    user.getEmail(), userDetails.getAuthorities());
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("Authenticated user {} set into SecurityContext", user.getEmail());
+            } else {
+                log.debug("SecurityContext already contains authentication, skipping set");
+            }
 
         } catch (Exception e) {
             log.error("JWT validation failed for path {}: {}", path, e.getMessage());
-            // Invalid/expired token - continue without authentication
-            // SecurityContext sẽ empty và request sẽ bị reject nếu cần authentication
+            SecurityContextHolder.clearContext();
         }
 
         chain.doFilter(request, response);
-    }
-
-    private boolean isPublicEndpoint(String path) {
-        return path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/register") ||
-                path.startsWith("/api/auth/refresh") ||
-                path.startsWith("/api/auth/logout") ||
-                path.startsWith("/oauth2/") ||
-                path.startsWith("/login/oauth2/") ||
-                path.equals("/error");
     }
 }
