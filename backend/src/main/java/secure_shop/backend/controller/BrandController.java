@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.BrandDTO;
+import secure_shop.backend.dto.product.BrandDTO;
 import secure_shop.backend.service.BrandService;
 
 @RestController

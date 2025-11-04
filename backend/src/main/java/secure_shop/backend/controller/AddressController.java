@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.AddressDTO;
+import secure_shop.backend.dto.address.AddressDTO;
 import secure_shop.backend.config.security.CustomUserDetails;
-import secure_shop.backend.dto.request.CreateAddressRequest;
-import secure_shop.backend.dto.request.UpdateAddressRequest;
+import secure_shop.backend.dto.address.request.CreateAddressRequest;
+import secure_shop.backend.dto.address.request.UpdateAddressRequest;
 import secure_shop.backend.service.AddressService;
 
 import java.util.List;

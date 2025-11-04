@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.CategoryDTO;
+import secure_shop.backend.dto.product.CategoryDTO;
 import secure_shop.backend.entities.Category;
 import secure_shop.backend.mapper.CategoryMapper;
 import secure_shop.backend.repositories.CategoryRepository;

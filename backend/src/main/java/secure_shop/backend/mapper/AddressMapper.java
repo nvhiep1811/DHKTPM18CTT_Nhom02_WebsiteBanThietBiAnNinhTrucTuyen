@@ -1,6 +1,6 @@
 package secure_shop.backend.mapper;
 
-import secure_shop.backend.dto.AddressDTO;
+import secure_shop.backend.dto.address.AddressDTO;
 import secure_shop.backend.entities.Address;
 
 public class AddressMapper {

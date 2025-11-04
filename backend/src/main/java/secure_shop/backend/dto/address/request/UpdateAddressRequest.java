@@ -1,4 +1,4 @@
-package secure_shop.backend.dto.request;
+package secure_shop.backend.dto.address.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class CreateAddressRequest {
+public class UpdateAddressRequest {
     @NotBlank(message = "Tên người nhận không được để trống")
     @Size(max = 100, message = "Tên người nhận tối đa 100 ký tự")
     private String name;
@@ -30,5 +30,5 @@ public class CreateAddressRequest {
     @Size(max = 100, message = "Tên tỉnh / thành phố tối đa 100 ký tự")
     private String province;
 
-    private Boolean isDefault = false;
+    private Boolean isDefault;
 }

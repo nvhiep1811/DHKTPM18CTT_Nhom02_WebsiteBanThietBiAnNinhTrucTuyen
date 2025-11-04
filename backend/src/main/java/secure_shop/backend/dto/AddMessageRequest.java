@@ -1,4 +1,4 @@
-package secure_shop.backend.dto.request;
+package secure_shop.backend.dto;
 
 import lombok.Data;
 

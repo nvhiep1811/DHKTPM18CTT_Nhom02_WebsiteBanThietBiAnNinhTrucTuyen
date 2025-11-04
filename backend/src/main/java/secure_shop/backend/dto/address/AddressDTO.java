@@ -1,4 +1,4 @@
-package secure_shop.backend.dto;
+package secure_shop.backend.dto.address;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

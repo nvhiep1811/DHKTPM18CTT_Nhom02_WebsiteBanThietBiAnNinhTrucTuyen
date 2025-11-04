@@ -10,7 +10,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.UserProfileDTO;
+import secure_shop.backend.dto.user.UserProfileDTO;
 import secure_shop.backend.dto.auth.AuthResponse;
 import secure_shop.backend.dto.auth.ChangePasswordRequest;
 import secure_shop.backend.config.security.CustomUserDetails;

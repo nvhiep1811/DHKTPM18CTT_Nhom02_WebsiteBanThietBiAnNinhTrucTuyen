@@ -1,6 +1,6 @@
 package secure_shop.backend.mapper;
 
-import secure_shop.backend.dto.SupportTicketDTO;
+import secure_shop.backend.dto.ticket.SupportTicketDTO;
 import secure_shop.backend.entities.SupportTicket;
 
 public class SupportTicketMapper {

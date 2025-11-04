@@ -2,7 +2,7 @@ package secure_shop.backend.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import secure_shop.backend.dto.BrandDTO;
+import secure_shop.backend.dto.product.BrandDTO;
 
 public interface BrandService {
     Page<BrandDTO> getAllBrands(Pageable pageable);

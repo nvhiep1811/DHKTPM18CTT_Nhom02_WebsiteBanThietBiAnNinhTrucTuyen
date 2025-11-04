@@ -4,7 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.InventoryDTO;
+import secure_shop.backend.dto.product.InventoryDTO;
 import secure_shop.backend.entities.Inventory;
 import secure_shop.backend.entities.Product;
 import secure_shop.backend.mapper.InventoryMapper;

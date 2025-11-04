@@ -1,4 +1,4 @@
-package secure_shop.backend.dto;
+package secure_shop.backend.dto.ticket;
 
 import lombok.*;
 import java.time.Instant;

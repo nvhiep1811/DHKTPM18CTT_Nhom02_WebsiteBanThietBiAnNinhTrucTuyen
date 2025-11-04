@@ -1,6 +1,7 @@
 package secure_shop.backend.entities;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import secure_shop.backend.enums.WarrantyStatus;
 
@@ -26,12 +27,20 @@ public class WarrantyRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Loại sự cố không được để trống")
+    @Size(max = 100, message = "Loại sự cố tối đa 100 ký tự")
+    @Pattern(
+            regexp = "^[\\p{L}0-9 .,'&\\-()!?]+$",
+            message = "Loại sự cố chỉ được chứa chữ, số và các ký tự hợp lệ như . , ' & - ( ) ! ?"
+    )
     @Column(nullable = false, length = 100)
     private String issueType;
 
+    @Size(max = 2000, message = "Mô tả sự cố tối đa 2000 ký tự")
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @NotNull(message = "Trạng thái yêu cầu bảo hành không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default

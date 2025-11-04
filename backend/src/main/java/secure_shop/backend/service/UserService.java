@@ -2,13 +2,12 @@ package secure_shop.backend.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import secure_shop.backend.dto.UserDTO;
-import secure_shop.backend.dto.UserProfileDTO;
+import secure_shop.backend.dto.user.UserDTO;
+import secure_shop.backend.dto.user.UserProfileDTO;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.enums.Role;
 import secure_shop.backend.dto.auth.RegisterRequest;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;

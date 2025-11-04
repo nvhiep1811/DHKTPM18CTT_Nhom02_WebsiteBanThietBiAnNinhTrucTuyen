@@ -7,6 +7,7 @@ import org.hibernate.type.SqlTypes;
 import secure_shop.backend.enums.PaymentMethod;
 import secure_shop.backend.enums.PaymentProvider;
 import secure_shop.backend.enums.PaymentStatus;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -29,19 +30,25 @@ import java.util.Map;
 @Builder
 public class Payment extends BaseEntity {
 
+    @NotNull(message = "Phương thức thanh toán không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private PaymentMethod method;
 
+    @NotNull(message = "Nhà cung cấp thanh toán không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private PaymentProvider provider;
 
+    @NotNull(message = "Trạng thái thanh toán không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default
     private PaymentStatus status = PaymentStatus.UNPAID;
 
+    @NotNull(message = "Số tiền thanh toán không được để trống")
+    @DecimalMin(value = "0.01", inclusive = true, message = "Số tiền thanh toán phải lớn hơn 0")
+    @Digits(integer = 13, fraction = 2, message = "Số tiền không hợp lệ (tối đa 13 chữ số và 2 số thập phân)")
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
