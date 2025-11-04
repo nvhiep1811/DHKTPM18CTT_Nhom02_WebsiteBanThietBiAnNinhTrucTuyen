@@ -21,6 +21,11 @@ import secure_shop.backend.security.jwt.JwtService;
 import secure_shop.backend.service.PasswordResetService;
 import secure_shop.backend.service.UserService;
 
+import org.springframework.http.HttpStatus; // Thêm 
+import jakarta.validation.Valid; // Thêm 
+import secure_shop.backend.dto.auth.RegisterRequest; // Thêm 
+import secure_shop.backend.service.VerificationService;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,6 +42,56 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserService userService;
     private final PasswordResetService resetService;
+    private final VerificationService verificationService;
+
+    /**
+     * Xác thực email
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        boolean success = verificationService.verifyEmail(token);
+        
+        if (success) {
+            return ResponseEntity.ok(Map.of(
+                "message", "Xác thực email thành công! Bạn có thể đăng nhập ngay.",
+                "verified", true
+            ));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of(
+                "message", "Link xác thực không hợp lệ hoặc đã hết hạn.",
+                "verified", false
+            ));
+        }
+    }
+
+    /**
+     * Gửi lại email xác thực
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        
+        try {
+            verificationService.resendVerificationEmail(email);
+            return ResponseEntity.ok(Map.of(
+                "message", "Email xác thực đã được gửi lại. Vui lòng kiểm tra hộp thư."
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    // ====== REGISTER ======
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
+        userService.registerUser(request);
+        
+        // Trả về response thành công
+        Map<String, String> response = Map.of("message", "Đăng ký thành công!");
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
 
     // ====== LOGIN ======
     @PostMapping("/login")

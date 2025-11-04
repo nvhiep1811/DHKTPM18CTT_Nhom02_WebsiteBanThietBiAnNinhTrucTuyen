@@ -63,6 +63,8 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
                                 "/api/auth/register",
+                                "/api/auth/verify-email",          // ← THÊM
+                                "/api/auth/resend-verification",    // ← THÊM
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/error"

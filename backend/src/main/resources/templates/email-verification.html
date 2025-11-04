@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Xác thực tài khoản</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0;">🎉 Chào mừng đến SecureShop</h1>
+        </div>
+
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #1f2937; margin-top: 0;">Xác thực tài khoản của bạn</h2>
+
+            <p>Xin chào,</p>
+
+            <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>SecureShop</strong>! Để hoàn tất quá trình đăng ký, vui lòng
+                xác thực địa chỉ email của bạn bằng cách click vào nút bên dưới:</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a th:href="${verificationLink}"
+                    style="background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+                    ✓ Xác thực email
+                </a>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px;">
+                Hoặc copy link sau vào trình duyệt:<br>
+                <a th:href="${verificationLink}" style="color: #7c3aed; word-break: break-all;"
+                    th:text="${verificationLink}">Link xác thực</a>
+            </p>
+
+            <div
+                style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                    <strong>ℹ️ Lưu ý:</strong> Link xác thực có hiệu lực trong 24 giờ. Nếu bạn không đăng ký tài khoản
+                    này, vui lòng bỏ qua email này.
+                </p>
+            </div>
+
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h3 style="color: #374151; margin-top: 0; font-size: 16px;">🎁 Những gì bạn nhận được:</h3>
+                <ul style="color: #6b7280; font-size: 14px; padding-left: 20px;">
+                    <li>Truy cập đầy đủ các tính năng</li>
+                    <li>Theo dõi đơn hàng dễ dàng</li>
+                    <li>Ưu đãi độc quyền dành cho thành viên</li>
+                    <li>Hỗ trợ khách hàng 24/7</li>
+                </ul>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                Trân trọng,<br>
+                Đội ngũ SecureShop
+            </p>
+        </div>
+
+        <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+            <p>© 2025 SecureShop. All rights reserved.</p>
+            <p>Nếu bạn cần hỗ trợ, hãy liên hệ: <a href="mailto:support@myshop.com"
+                    style="color: #7c3aed;">support@myshop.com</a></p>
+        </div>
+    </div>
+</body>
+
+</html>

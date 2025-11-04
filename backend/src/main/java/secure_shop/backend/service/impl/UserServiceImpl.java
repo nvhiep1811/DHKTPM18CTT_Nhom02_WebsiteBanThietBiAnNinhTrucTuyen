@@ -17,6 +17,10 @@ import secure_shop.backend.mapper.UserMapper;
 import secure_shop.backend.repositories.UserRepository;
 import secure_shop.backend.service.UserService;
 import secure_shop.backend.specification.UserSpecification;
+import secure_shop.backend.dto.auth.RegisterRequest;
+
+import secure_shop.backend.exception.ConflictException;
+import secure_shop.backend.service.VerificationService;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -33,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
     private final UserMapper userMapper;
+    private final VerificationService verificationService;
 
     @Override
     public Optional<User> findById(UUID id) {
@@ -250,5 +255,35 @@ public class UserServiceImpl implements UserService {
     private User findUserById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Override
+    public User registerUser(RegisterRequest request) {
+        // 1. Kiểm tra xem email đã tồn tại chưa
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new ConflictException("Email này đã được sử dụng.");
+        }
+
+        // 2. Hash mật khẩu
+        String hashedPassword = encoder.encode(request.getPassword());
+
+        // 3. Tạo đối tượng User mới
+        User newUser = User.builder()
+                .email(request.getEmail())
+                .passwordHash(hashedPassword)
+                .name(request.getName())
+                .phone(request.getPhone())
+                .provider("local")
+                .enabled(false) // ⚠️ THAY ĐỔI: Chưa kích hoạt, cần xác thực email
+                .role(Role.USER)
+                .build();
+
+        // 4. Lưu vào database
+        User savedUser = userRepository.save(newUser);
+
+        // 5. Gửi email xác thực
+        verificationService.sendVerificationEmail(savedUser.getEmail(), savedUser.getId().toString());
+
+        return savedUser;
     }
 }
