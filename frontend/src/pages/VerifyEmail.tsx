@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -19,8 +19,11 @@ const VerifyEmail: React.FC = () => {
   const [isResending, setIsResending] = useState(false);
 
   const token = searchParams.get('token');
+  const hasVerified = useRef(false);
 
   useEffect(() => {
+    if (hasVerified.current) return;
+    
     const verifyEmail = async () => {
       try {
         if (!token) {
@@ -29,10 +32,21 @@ const VerifyEmail: React.FC = () => {
           return;
         }
 
-        await axiosInstance.get('/auth/verify-email', { params: { token } });
+        hasVerified.current = true;
+
+        console.log('🔍 [VERIFY] Calling API with token:', token);
+        
+        const response = await axiosInstance.get('/auth/verify-email', { 
+          params: { token } 
+        });
+
+        console.log('✅ [VERIFY] Response:', response.data);
+
+        // ✅ FIX: Nếu API trả về 200 → xác thực thành công
         setState('success');
         toast.success('Xác thực email thành công!');
 
+        // Start countdown
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
@@ -45,14 +59,26 @@ const VerifyEmail: React.FC = () => {
         }, 1000);
 
         return () => clearInterval(timer);
+
       } catch (err: any) {
+        console.error('❌ [VERIFY] Error:', err);
+        console.error('❌ [VERIFY] Error response:', err.response?.data);
+        
+        // ✅ Xử lý các trường hợp lỗi
         if (err.response?.status === 410) {
-          // 410 Gone → link hết hạn
           setState('expired');
           setErrorMessage('Link xác thực đã hết hạn.');
+          toast.error('Link xác thực đã hết hạn.');
+        } else if (err.response?.status === 400) {
+          setState('error');
+          const message = err.response?.data?.message || 'Link xác thực không hợp lệ hoặc đã hết hạn.';
+          setErrorMessage(message);
+          toast.error(message);
         } else {
           setState('error');
-          setErrorMessage(err.response?.data?.message || 'Đã xảy ra lỗi khi xác thực.');
+          const message = err.response?.data?.message || 'Đã xảy ra lỗi khi xác thực.';
+          setErrorMessage(message);
+          toast.error(message);
         }
       }
     };
@@ -60,26 +86,33 @@ const VerifyEmail: React.FC = () => {
     verifyEmail();
   }, [token, navigate]);
 
-  // ✉️ Gửi lại email xác thực (dùng input)
+  // ✉️ Gửi lại email xác thực
   const handleResendVerification = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!resendEmail.trim()) {
       toast.warn('Vui lòng nhập email của bạn.');
       return;
     }
+    
     try {
       setIsResending(true);
-      await axiosInstance.post('/auth/resend-verification', null, {
-        params: { email: resendEmail.trim() },
+      
+      const response = await axiosInstance.post('/auth/resend-verification', {
+        email: resendEmail.trim()
       });
-      toast.success('Email xác thực đã được gửi lại!');
-      setResendEmail('');
+
+      if (response.data.success) {
+        toast.success('Email xác thực đã được gửi lại!');
+        setResendEmail('');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể gửi lại email');
     } finally {
       setIsResending(false);
     }
   };
 
-  // === Các trạng thái giao diện ===
+  // === UI States ===
 
   if (state === 'verifying') {
     return (
@@ -149,7 +182,7 @@ const VerifyEmail: React.FC = () => {
     );
   }
 
-  // === Expired / Error ===
+  // === Error / Expired State ===
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

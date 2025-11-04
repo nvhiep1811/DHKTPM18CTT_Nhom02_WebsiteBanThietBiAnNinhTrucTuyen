@@ -105,4 +105,23 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(status).body(error);
     }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflictException(
+            ConflictException ex, 
+            HttpServletRequest request // <-- Thêm 
+    ) {
+        
+        // Gọi constructor đầy đủ 
+        ErrorResponse errorResponse = new ErrorResponse(
+                ex.getMessage(),                          // String message
+                HttpStatus.CONFLICT.getReasonPhrase(),    // String details/error
+                request.getRequestURI(),                  // String path
+                HttpStatus.CONFLICT.value(),              // int status
+                null,                                     // Map<String, String> validationErrors
+                LocalDateTime.now()                       // LocalDateTime timestamp
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
 }

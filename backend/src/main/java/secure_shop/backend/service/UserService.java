@@ -6,6 +6,7 @@ import secure_shop.backend.dto.UserDTO;
 import secure_shop.backend.dto.UserProfileDTO;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.enums.Role;
+import secure_shop.backend.dto.auth.RegisterRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -38,4 +39,6 @@ public interface UserService {
     void changePassword(User user, String currentPassword, String newPassword);
 
     boolean updatePassword(String email, String newPassword);
+
+    User registerUser(RegisterRequest request);
 }
