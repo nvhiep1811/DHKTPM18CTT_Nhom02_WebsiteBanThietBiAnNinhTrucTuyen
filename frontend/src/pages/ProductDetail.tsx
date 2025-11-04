@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, Edit } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';
+import { useAppSelector } from '../hooks';
 
 interface Product {
   id: string;
@@ -42,8 +43,20 @@ const ProductDetail: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    price: '',
+    originalPrice: '',
+    category: '',
+    inStock: true,
+    stock: '',
+    description: '',
+    image: ''
+  });
 
-  const userRole: 'guest' | 'user' | 'admin' = 'guest';
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
 
   // Mock product data
   useEffect(() => {
@@ -133,6 +146,7 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
+    if (!product) return;
     const success = await cartService.addToCart(product, quantity);
     if (success) {
       toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
@@ -159,6 +173,39 @@ const ProductDetail: React.FC = () => {
   const handleWishlist = () => {
     setIsWishlisted(!isWishlisted);
     toast.success(isWishlisted ? 'Đã xóa khỏi danh sách yêu thích' : 'Đã thêm vào danh sách yêu thích');
+  };
+
+  const handleEditProduct = () => {
+    if (!product) return;
+    setEditFormData({
+      name: product.name,
+      price: product.price.toString(),
+      originalPrice: product.originalPrice?.toString() || '',
+      category: product.category,
+      inStock: product.inStock,
+      stock: product.stock.toString(),
+      description: product.description,
+      image: product.image
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!product) return;
+    
+    // Validate form
+    if (!editFormData.name || !editFormData.price || !editFormData.category) {
+      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc!');
+      return;
+    }
+
+    // In a real app, this would make an API call
+    toast.success('Đã cập nhật sản phẩm thành công!');
+    setIsEditModalOpen(false);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
   };
 
   if (loading) {
@@ -271,9 +318,20 @@ const ProductDetail: React.FC = () => {
             className="space-y-6"
           >
             <div>
-              <span className="text-sm text-cyan-500 font-medium uppercase tracking-wide">
-                {product.category}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-cyan-500 font-medium uppercase tracking-wide">
+                  {product.category}
+                </span>
+                {userRole === 'admin' && (
+                  <button
+                    onClick={handleEditProduct}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Chỉnh sửa
+                  </button>
+                )}
+              </div>
               <h1 className="text-3xl font-bold text-zinc-800 mt-2">{product.name}</h1>
               
               <div className="flex items-center mt-4">
@@ -500,6 +558,145 @@ const ProductDetail: React.FC = () => {
           </div>
         </motion.div>
       </main>
+
+      {/* Edit Product Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Chỉnh sửa sản phẩm</h3>
+              <button onClick={handleCloseEditModal} className="text-gray-500 hover:text-gray-700">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên sản phẩm *
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập tên sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={editFormData.price}
+                  onChange={(e) => setEditFormData({...editFormData, price: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập giá sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá gốc (VND) - Không bắt buộc
+                </label>
+                <input
+                  type="number"
+                  value={editFormData.originalPrice}
+                  onChange={(e) => setEditFormData({...editFormData, originalPrice: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập giá gốc nếu có khuyến mãi"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Danh mục *
+                </label>
+                <select
+                  value={editFormData.category}
+                  onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Chọn danh mục</option>
+                  <option value="Camera An Ninh">Camera An Ninh</option>
+                  <option value="Khóa Thông Minh">Khóa Thông Minh</option>
+                  <option value="Báo Động">Báo Động</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tồn kho
+                </label>
+                <input
+                  type="number"
+                  value={editFormData.stock}
+                  onChange={(e) => setEditFormData({...editFormData, stock: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập số lượng tồn kho"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hình ảnh (URL)
+                </label>
+                <input
+                  type="url"
+                  value={editFormData.image}
+                  onChange={(e) => setEditFormData({...editFormData, image: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập URL hình ảnh"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <textarea
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Nhập mô tả sản phẩm"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="editInStock"
+                  checked={editFormData.inStock}
+                  onChange={(e) => setEditFormData({...editFormData, inStock: e.target.checked})}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <label htmlFor="editInStock" className="ml-2 text-sm text-gray-700">
+                  Còn hàng
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={handleCloseEditModal}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

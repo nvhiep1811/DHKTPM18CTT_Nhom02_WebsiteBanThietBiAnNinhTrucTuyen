@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
-import { Filter, Search, Grid, List } from 'lucide-react';
+import { Filter, Search, Grid, List, Plus, X, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 import { toast } from 'react-toastify';
@@ -22,6 +23,7 @@ interface Product {
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +32,18 @@ const Products: React.FC = () => {
   const [sortBy, setSortBy] = useState('name');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newProductData, setNewProductData] = useState({
+    name: '',
+    price: '',
+    category: '',
+    stock: '',
+    image: '',
+    description: ''
+  });
 
-  const userRole: 'guest' | 'customer' | 'admin' = 'guest';
+  // Get user role from Redux store
+  const userRole = useSelector((state: any) => state.auth.user?.role || 'guest');
 
   const categories = [
     { id: 'all', name: 'Tất cả sản phẩm' },
@@ -159,14 +171,51 @@ const Products: React.FC = () => {
     setSearchParams(searchParams);
   };
 
-  const handleAddToCart = async (product) => {
+  const handleAddToCart = async (product: Product) => {
     const success = await cartService.addToCart(product);
     if (success) {
-      toast.success(`Đã thêm sản phẩm vào giỏ hàng!`);
+      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`);
       window.dispatchEvent(new Event('cartUpdated'));
     } else {
       toast.error('Thêm vào giỏ hàng thất bại. Vui lòng thử lại.');
     }
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+      setProducts(products.filter(p => p.id !== productId));
+      toast.success('Đã xóa sản phẩm thành công!');
+    }
+  };
+
+  const handleAddProduct = () => {
+    if (!newProductData.name || !newProductData.price || !newProductData.category) {
+      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc!');
+      return;
+    }
+
+    const product: Product = {
+      id: Date.now().toString(),
+      name: newProductData.name,
+      price: parseFloat(newProductData.price),
+      category: newProductData.category,
+      image: newProductData.image || 'https://via.placeholder.com/400x300?text=No+Image',
+      rating: 0,
+      reviewCount: 0,
+      inStock: parseInt(newProductData.stock) > 0
+    };
+
+    setProducts([...products, product]);
+    setNewProductData({
+      name: '',
+      price: '',
+      category: '',
+      stock: '',
+      image: '',
+      description: ''
+    });
+    setShowAddModal(false);
+    toast.success('Đã thêm sản phẩm thành công!');
   };
 
   return (
@@ -176,10 +225,23 @@ const Products: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-800 mb-4">Sản Phẩm An Ninh</h1>
-          <p className="text-gray-600">
-            Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
-          </p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-zinc-800 mb-4">Sản Phẩm An Ninh</h1>
+              <p className="text-gray-600">
+                Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
+              </p>
+            </div>
+            {userRole === 'admin' && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Thêm sản phẩm
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -303,11 +365,12 @@ const Products: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                       >
-                        <ProductCard
-                          product={product}
-                          userRole={userRole}
-                          onAddToCart={handleAddToCart}
-                        />
+                      <ProductCard
+                        product={product}
+                        userRole={userRole}
+                        onAddToCart={handleAddToCart}
+                        onDeleteProduct={handleDeleteProduct}
+                      />
                       </motion.div>
                     ))}
                   </motion.div>
@@ -319,6 +382,121 @@ const Products: React.FC = () => {
       </main>
 
       <Footer />
+
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm sản phẩm mới</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên sản phẩm *
+                </label>
+                <input
+                  type="text"
+                  value={newProductData.name}
+                  onChange={(e) => setNewProductData({...newProductData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập tên sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={newProductData.price}
+                  onChange={(e) => setNewProductData({...newProductData, price: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập giá sản phẩm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Danh mục *
+                </label>
+                <select
+                  value={newProductData.category}
+                  onChange={(e) => setNewProductData({...newProductData, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Chọn danh mục</option>
+                  <option value="Camera an ninh">Camera an ninh</option>
+                  <option value="Hệ thống báo động">Hệ thống báo động</option>
+                  <option value="Kiểm soát ra vào">Kiểm soát ra vào</option>
+                  <option value="Thiết bị thông minh">Thiết bị thông minh</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tồn kho
+                </label>
+                <input
+                  type="number"
+                  value={newProductData.stock}
+                  onChange={(e) => setNewProductData({...newProductData, stock: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập số lượng tồn kho"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hình ảnh (URL)
+                </label>
+                <input
+                  type="url"
+                  value={newProductData.image}
+                  onChange={(e) => setNewProductData({...newProductData, image: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Nhập URL hình ảnh"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <textarea
+                  value={newProductData.description}
+                  onChange={(e) => setNewProductData({...newProductData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Nhập mô tả sản phẩm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                Thêm sản phẩm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

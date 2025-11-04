@@ -11,6 +11,7 @@ import axiosInstance from '../utils/axiosConfig';
 import { useAppDispatch } from '../hooks';
 import { loginSuccess } from '../stores/authSlice';
 import type { User } from '../types/types';
+import { mockUsers } from '../utils/mockData';
 
 const loginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -59,6 +60,44 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Mock login for testing - check if credentials match mock data
+      const mockUser = Object.values(mockUsers).find(
+        user => user.email === data.email && user.password === data.password
+      );
+
+      if (mockUser) {
+        // Mock successful login
+        const mockToken = `mock-token-${mockUser.id}-${Date.now()}`;
+        const mockExpiresIn = 3600; // 1 hour
+
+        const expiresAt = Date.now() + mockExpiresIn * 1000;
+        localStorage.setItem("accessToken", mockToken);
+        localStorage.setItem("tokenExpiresAt", expiresAt.toString());
+
+        const user: User = {
+          id: mockUser.id,
+          email: mockUser.email,
+          name: mockUser.name,
+          phone: mockUser.phone,
+          role: mockUser.role,
+          avatarUrl: mockUser.avatarUrl,
+        };
+
+        dispatch(loginSuccess({ user, accessToken: mockToken }));
+
+        toast.success("Đăng nhập thành công (mock)!");
+
+        if (user.role.toLowerCase() === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+
+        setIsLoading(false);
+        return;
+      }
+
+      // Real API call if not mock credentials
       const { data: loginData } = await axiosInstance.post<AuthResponse>("/auth/login", data);
       const { accessToken, expiresIn } = loginData;
 
@@ -87,9 +126,13 @@ const Login: React.FC = () => {
         navigate("/");
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Login error:", error);
       localStorage.removeItem("accessToken");
       localStorage.removeItem("tokenExpiresAt");
+
+      const errorMessage = error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +172,12 @@ const Login: React.FC = () => {
                 tạo tài khoản mới
               </Link>
             </p>
+            {/* Test credentials */}
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left text-sm">
+              <p className="font-medium text-blue-800 mb-2">Credentials để test:</p>
+              <p><strong>Admin:</strong> admin@example.com / admin123</p>
+              <p><strong>User:</strong> user@example.com / user123</p>
+            </div>
           </div>
 
           <div className="bg-white py-8 px-6 shadow-lg rounded-lg">
