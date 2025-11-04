@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.CategoryDTO;
+import secure_shop.backend.dto.product.CategoryDTO;
 import secure_shop.backend.service.CategoryService;
 
 import java.util.List;

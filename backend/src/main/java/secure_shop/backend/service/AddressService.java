@@ -1,9 +1,8 @@
 package secure_shop.backend.service;
 
-import secure_shop.backend.dto.AddressDTO;
-import secure_shop.backend.dto.request.CreateAddressRequest;
-import secure_shop.backend.dto.request.UpdateAddressRequest;
-import secure_shop.backend.entities.Address;
+import secure_shop.backend.dto.address.AddressDTO;
+import secure_shop.backend.dto.address.request.CreateAddressRequest;
+import secure_shop.backend.dto.address.request.UpdateAddressRequest;
 
 import java.util.List;
 import java.util.UUID;

@@ -4,7 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.MediaAssetDTO;
+import secure_shop.backend.dto.product.MediaAssetDTO;
 import secure_shop.backend.entities.MediaAsset;
 import secure_shop.backend.entities.Product;
 import secure_shop.backend.repositories.MediaAssetRepository;

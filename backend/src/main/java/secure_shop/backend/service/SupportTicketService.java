@@ -2,8 +2,8 @@ package secure_shop.backend.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import secure_shop.backend.dto.SupportTicketDTO;
-import secure_shop.backend.dto.request.CreateTicketRequest;
+import secure_shop.backend.dto.ticket.SupportTicketDTO;
+import secure_shop.backend.dto.ticket.request.CreateTicketRequest;
 import secure_shop.backend.enums.TicketStatus;
 
 import java.util.UUID;

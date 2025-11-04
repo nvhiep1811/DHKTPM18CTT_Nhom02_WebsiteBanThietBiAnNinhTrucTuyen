@@ -1,8 +1,8 @@
 package secure_shop.backend.mapper;
 
 import org.springframework.stereotype.Component;
-import secure_shop.backend.dto.ArticleDTO;
-import secure_shop.backend.dto.request.CreateArticleRequest;
+import secure_shop.backend.dto.article.ArticleDTO;
+import secure_shop.backend.dto.article.request.CreateArticleRequest;
 import secure_shop.backend.entities.Article;
 import secure_shop.backend.entities.User;
 

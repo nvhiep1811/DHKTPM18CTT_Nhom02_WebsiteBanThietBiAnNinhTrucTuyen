@@ -1,4 +1,4 @@
-package secure_shop.backend.dto;
+package secure_shop.backend.dto.user;
 
 import lombok.Builder;
 import lombok.Data;

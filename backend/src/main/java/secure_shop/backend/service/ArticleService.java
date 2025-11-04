@@ -2,9 +2,9 @@ package secure_shop.backend.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import secure_shop.backend.dto.ArticleDTO;
-import secure_shop.backend.dto.request.CreateArticleRequest;
-import secure_shop.backend.dto.request.UpdateArticleRequest;
+import secure_shop.backend.dto.article.ArticleDTO;
+import secure_shop.backend.dto.article.request.CreateArticleRequest;
+import secure_shop.backend.dto.article.request.UpdateArticleRequest;
 import secure_shop.backend.entities.User;
 
 import java.util.UUID;

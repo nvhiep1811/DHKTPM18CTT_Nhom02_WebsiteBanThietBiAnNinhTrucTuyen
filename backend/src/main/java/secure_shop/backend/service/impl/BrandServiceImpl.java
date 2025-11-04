@@ -5,7 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.BrandDTO;
+import secure_shop.backend.dto.product.BrandDTO;
 import secure_shop.backend.entities.Brand;
 import secure_shop.backend.mapper.BrandMapper;
 import secure_shop.backend.repositories.BrandRepository;

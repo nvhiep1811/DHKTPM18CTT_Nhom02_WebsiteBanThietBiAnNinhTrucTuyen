@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.InventoryDTO;
+import secure_shop.backend.dto.product.InventoryDTO;
 import secure_shop.backend.service.InventoryService;
 
 import java.util.List;

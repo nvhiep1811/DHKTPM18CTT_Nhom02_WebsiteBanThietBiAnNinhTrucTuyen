@@ -1,6 +1,6 @@
 package secure_shop.backend.service;
 
-import secure_shop.backend.dto.InventoryDTO;
+import secure_shop.backend.dto.product.InventoryDTO;
 
 import java.util.List;
 import java.util.UUID;

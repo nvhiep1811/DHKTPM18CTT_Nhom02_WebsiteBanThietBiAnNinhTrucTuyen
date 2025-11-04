@@ -1,4 +1,4 @@
-package secure_shop.backend.dto.request;
+package secure_shop.backend.dto.ticket.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

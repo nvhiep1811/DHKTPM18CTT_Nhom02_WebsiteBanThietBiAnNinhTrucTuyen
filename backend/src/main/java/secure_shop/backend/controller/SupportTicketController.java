@@ -7,9 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import secure_shop.backend.dto.SupportTicketDTO;
+import secure_shop.backend.dto.ticket.SupportTicketDTO;
 import secure_shop.backend.config.security.CustomUserDetails;
-import secure_shop.backend.dto.request.CreateTicketRequest;
+import secure_shop.backend.dto.ticket.request.CreateTicketRequest;
 import secure_shop.backend.enums.TicketStatus;
 import secure_shop.backend.service.SupportTicketService;
 

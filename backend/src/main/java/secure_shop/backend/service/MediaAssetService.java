@@ -1,6 +1,6 @@
 package secure_shop.backend.service;
 
-import secure_shop.backend.dto.MediaAssetDTO;
+import secure_shop.backend.dto.product.MediaAssetDTO;
 import java.util.List;
 import java.util.UUID;
 

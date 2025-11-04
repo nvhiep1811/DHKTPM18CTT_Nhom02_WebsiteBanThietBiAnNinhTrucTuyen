@@ -1,4 +1,4 @@
-package secure_shop.backend.dto;
+package secure_shop.backend.dto.product;
 
 import java.io.Serializable;
 import java.time.Instant;

@@ -1,8 +1,8 @@
 package secure_shop.backend.mapper;
 
 import org.springframework.stereotype.Component;
-import secure_shop.backend.dto.UserDTO;
-import secure_shop.backend.dto.UserProfileDTO;
+import secure_shop.backend.dto.user.UserDTO;
+import secure_shop.backend.dto.user.UserProfileDTO;
 import secure_shop.backend.entities.User;
 
 import java.util.List;

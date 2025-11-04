@@ -1,7 +1,7 @@
 package secure_shop.backend.mapper;
 
 import org.springframework.stereotype.Component;
-import secure_shop.backend.dto.CategoryDTO;
+import secure_shop.backend.dto.product.CategoryDTO;
 import secure_shop.backend.entities.Category;
 
 @Component
