@@ -17,6 +17,11 @@ interface CartItem {
 }
 
 const Cart: React.FC = () => {
+  
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);

@@ -18,6 +18,10 @@ const Profile: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
 
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+
   // Login/out redirect
   useEffect(() => {
     if (!user || user.role === "guest") navigate('/login');

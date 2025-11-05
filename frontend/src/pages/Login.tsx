@@ -25,6 +25,11 @@ interface AuthResponse {
 }
 
 const Login: React.FC = () => {
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
   const location = useLocation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();

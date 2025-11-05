@@ -22,6 +22,11 @@ interface Product {
 }
 
 const Products: React.FC = () => {
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);

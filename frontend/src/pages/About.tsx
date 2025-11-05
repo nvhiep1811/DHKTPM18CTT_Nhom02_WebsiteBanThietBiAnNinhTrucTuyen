@@ -1,10 +1,15 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import { Shield, Award, Users, Clock, Target, Heart, TrendingUp, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const About: React.FC = () => {
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
   const stats = [
     { icon: Users, value: '10,000+', label: 'Khách hàng tin tưởng' },
     { icon: Award, value: '15+', label: 'Năm kinh nghiệm' },
