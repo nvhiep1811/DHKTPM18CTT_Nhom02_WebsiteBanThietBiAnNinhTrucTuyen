@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -28,7 +29,14 @@ public class ProductDetailsDTO implements Serializable {
     private String shortDesc;
     private String longDesc;
 
+    private String thumbnailUrl;
+
     private List<MediaAssetDTO> mediaAssets;
     private InventoryDTO inventory;
     private Set<ReviewDTO> reviews;
+
+    // Timestamps for tracking
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant deletedAt;
 }

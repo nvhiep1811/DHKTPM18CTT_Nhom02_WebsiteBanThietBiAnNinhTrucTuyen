@@ -20,7 +20,9 @@ import secure_shop.backend.service.UserService;
 import secure_shop.backend.specification.UserSpecification;
 import secure_shop.backend.dto.auth.RegisterRequest;
 
+import secure_shop.backend.exception.BusinessRuleViolationException;
 import secure_shop.backend.exception.ConflictException;
+import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.service.VerificationService;
 
 import java.time.Instant;
@@ -102,10 +104,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public void softDeleteUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (user.getDeletedAt() != null) {
-            throw new RuntimeException("User already deleted");
+            throw new BusinessRuleViolationException("User already deleted");
         }
 
         user.setDeletedAt(Instant.now());
@@ -115,10 +117,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO restoreUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (user.getDeletedAt() == null) {
-            throw new RuntimeException("User is not deleted");
+            throw new BusinessRuleViolationException("User is not deleted");
         }
 
         user.setDeletedAt(null);
@@ -128,10 +130,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public void disableUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (user.getDeletedAt() != null) {
-            throw new RuntimeException("Cannot disable deleted user. Restore first.");
+            throw new BusinessRuleViolationException("Cannot disable deleted user. Restore first.");
         }
 
         user.setEnabled(false);
@@ -141,10 +143,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public void enableUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (user.getDeletedAt() != null) {
-            throw new RuntimeException("Cannot enable deleted user. Restore first.");
+            throw new BusinessRuleViolationException("Cannot enable deleted user. Restore first.");
         }
 
         user.setEnabled(true);
@@ -259,7 +261,7 @@ public class UserServiceImpl implements UserService {
 
     private User findUserById(UUID userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
     @Override

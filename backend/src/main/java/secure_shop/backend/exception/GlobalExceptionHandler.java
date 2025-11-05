@@ -78,6 +78,26 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("INVALID_TOKEN", "Token không hợp lệ hoặc đã hết hạn", req, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest req) {
+        return buildErrorResponse("NOT_FOUND", ex.getMessage(), req, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(ResourceAlreadyExistsException ex, HttpServletRequest req) {
+        return buildErrorResponse("CONFLICT", ex.getMessage(), req, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(InvalidOperationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOperation(InvalidOperationException ex, HttpServletRequest req) {
+        return buildErrorResponse("BAD_REQUEST", ex.getMessage(), req, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BusinessRuleViolationException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessRuleViolation(BusinessRuleViolationException ex, HttpServletRequest req) {
+        return buildErrorResponse("UNPROCESSABLE_ENTITY", ex.getMessage(), req, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
     @ExceptionHandler({DataIntegrityViolationException.class, IllegalArgumentException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
         return buildErrorResponse("BAD_REQUEST", ex.getMessage(), req, HttpStatus.BAD_REQUEST);

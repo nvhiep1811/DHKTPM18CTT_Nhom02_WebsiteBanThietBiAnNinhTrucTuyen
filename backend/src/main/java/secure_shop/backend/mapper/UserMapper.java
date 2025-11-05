@@ -3,6 +3,7 @@ package secure_shop.backend.mapper;
 import org.springframework.stereotype.Component;
 import secure_shop.backend.dto.user.UserDTO;
 import secure_shop.backend.dto.user.UserProfileDTO;
+import secure_shop.backend.dto.user.UserSummaryDTO;
 import secure_shop.backend.entities.User;
 
 import java.util.List;
@@ -18,6 +19,16 @@ public class UserMapper {
                 .phone(user.getPhone())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole().name())
+                .build();
+    }
+
+    public UserSummaryDTO toSummaryDTO(User user) {
+        if (user == null) return null;
+        return UserSummaryDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhone())
                 .build();
     }
 

@@ -3,13 +3,13 @@ package secure_shop.backend.entities;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.SQLRestriction;
+
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -25,6 +25,7 @@ import java.util.Set;
                 // CREATE INDEX idx_products_active_only ON products(id) WHERE active = true;
         }
 )
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -69,6 +70,10 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Boolean active = true;
 
+    // URL ảnh đại diện (thumbnail) - lấy từ mediaAssets[0] hoặc set riêng
+    @Size(max = 2048, message = "URL ảnh đại diện quá dài")
+    private String thumbnailUrl;
+
     // Soft delete
     private Instant deletedAt;
 
@@ -86,7 +91,7 @@ public class Product extends BaseEntity {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private Set<MediaAsset> mediaAssets = new HashSet<>();
+    private List<MediaAsset> mediaAssets = new ArrayList<>();
 
     @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Inventory inventory;

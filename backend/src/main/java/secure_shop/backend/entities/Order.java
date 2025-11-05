@@ -83,11 +83,25 @@ public class Order extends BaseEntity {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private Shipment shipment;
 
-    public void recalculateTotals() {
-        this.subTotal = orderItems.stream()
-                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    @PrePersist
+    @PreUpdate
+    private void calculateTotals() {
+        if (orderItems != null && !orderItems.isEmpty()) {
+            this.subTotal = orderItems.stream()
+                    .map(OrderItem::getLineTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else {
+            this.subTotal = BigDecimal.ZERO;
+        }
+
+        if (discountTotal == null) discountTotal = BigDecimal.ZERO;
+        if (shippingFee == null) shippingFee = BigDecimal.ZERO;
 
         this.grandTotal = subTotal.subtract(discountTotal).add(shippingFee);
+    }
+
+    // Public method for manual recalculation if needed
+    public void recalculateTotals() {
+        calculateTotals();
     }
 }

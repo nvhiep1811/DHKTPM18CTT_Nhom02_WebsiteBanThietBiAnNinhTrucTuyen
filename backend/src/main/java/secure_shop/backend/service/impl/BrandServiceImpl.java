@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import secure_shop.backend.dto.product.BrandDTO;
 import secure_shop.backend.entities.Brand;
+import secure_shop.backend.exception.ResourceAlreadyExistsException;
+import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.mapper.BrandMapper;
 import secure_shop.backend.repositories.BrandRepository;
 import secure_shop.backend.service.BrandService;
@@ -31,7 +33,7 @@ public class BrandServiceImpl implements BrandService {
         Brand brand = brandRepository.findById(id);
 
         if (brand == null) {
-            throw new RuntimeException("Brand not found");
+            throw new ResourceNotFoundException("Brand", id);
         }
 
         return brandMapper.toDTO(brand);
@@ -40,7 +42,7 @@ public class BrandServiceImpl implements BrandService {
     @Override
     public BrandDTO createBrand(BrandDTO dto) {
         if (brandRepository.existsByName(dto.getName())) {
-            throw new RuntimeException("Brand name already exists");
+            throw new ResourceAlreadyExistsException("Brand name already exists: " + dto.getName());
         }
         Brand brand = brandMapper.toEntity(dto);
         return brandMapper.toDTO(brandRepository.save(brand));
@@ -50,10 +52,10 @@ public class BrandServiceImpl implements BrandService {
     public BrandDTO updateBrand(Long id, BrandDTO dto) {
         Brand brand = brandRepository.findById(id);
         if (brand == null) {
-            throw new RuntimeException("Brand not found");
+            throw new ResourceNotFoundException("Brand", id);
         }
         if (!brand.getName().equals(dto.getName()) && brandRepository.existsByName(dto.getName())) {
-            throw new RuntimeException("Brand name already exists");
+            throw new ResourceAlreadyExistsException("Brand name already exists: " + dto.getName());
         }
         brand.setName(dto.getName());
         return brandMapper.toDTO(brandRepository.save(brand));

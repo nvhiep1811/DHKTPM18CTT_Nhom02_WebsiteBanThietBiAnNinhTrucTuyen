@@ -1,5 +1,9 @@
 package secure_shop.backend.dto.product;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import secure_shop.backend.entities.Review;
 import secure_shop.backend.enums.ReviewStatus;
 
@@ -10,14 +14,17 @@ import java.util.UUID;
 /**
  * DTO for {@link Review}
  */
-public record ReviewDTO(
-        Long id,
-        Integer rating,
-        String comment,
-        ReviewStatus status,
-        Instant createdAt,
-        UUID productId,
-        UUID userId,
-        String userName
-                        ) implements Serializable {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ReviewDTO implements Serializable {
+    private Long id;
+    private Integer rating;
+    private String comment;
+    private ReviewStatus status;
+    private Instant createdAt;
+    private UUID productId;
+    private UUID userId;
+    private String userName;
 }
