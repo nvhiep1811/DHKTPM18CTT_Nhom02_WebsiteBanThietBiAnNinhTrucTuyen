@@ -13,6 +13,8 @@ import GuestRoute from "../routes/GuestRoute";
 import UserGuard from "../components/UserGuard";
 import Register from "../pages/Register";
 import VerifyEmail from "../pages/VerifyEmail";
+import Terms from '../pages/Terms';
+import Privacy from '../pages/Privacy';
 
 export const publicRoutes = {
   path: "/",
@@ -98,5 +100,13 @@ export const publicRoutes = {
       path: "contact",
       element: <Contact />,
     },
+    {
+      path: "terms",
+      element: <Terms />
+    },
+    {
+      path: "privacy",
+      element: <Privacy />
+    }
   ],
 };
