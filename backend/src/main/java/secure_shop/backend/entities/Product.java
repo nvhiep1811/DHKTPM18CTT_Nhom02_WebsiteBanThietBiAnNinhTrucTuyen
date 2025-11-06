@@ -3,14 +3,12 @@ package secure_shop.backend.entities;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(
@@ -20,12 +18,11 @@ import java.util.Set;
                 @Index(name = "idx_products_active", columnList = "active"),
                 @Index(name = "idx_products_category", columnList = "category_id"),
                 @Index(name = "idx_products_brand", columnList = "brand_id"),
-                @Index(name = "idx_products_name", columnList = "name"),
-                // Partial index for active products (tạo trong migration)
-                // CREATE INDEX idx_products_active_only ON products(id) WHERE active = true;
+                @Index(name = "idx_products_name", columnList = "name")
         }
 )
-@SQLRestriction("deleted_at IS NULL")
+@SQLDelete(sql = "UPDATE products SET deleted_at = now(), active = false WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -70,11 +67,11 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Boolean active = true;
 
-    // URL ảnh đại diện (thumbnail) - lấy từ mediaAssets[0] hoặc set riêng
     @Size(max = 2048, message = "URL ảnh đại diện quá dài")
     private String thumbnailUrl;
 
     // Soft delete
+    @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -99,4 +96,19 @@ public class Product extends BaseEntity {
     @OneToMany(mappedBy = "product")
     @Builder.Default
     private Set<OrderItem> orderItems = new HashSet<>();
+
+    // ===== Helper methods =====
+    public void softDelete() {
+        this.deletedAt = Instant.now();
+        this.active = false;
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+        this.active = true;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

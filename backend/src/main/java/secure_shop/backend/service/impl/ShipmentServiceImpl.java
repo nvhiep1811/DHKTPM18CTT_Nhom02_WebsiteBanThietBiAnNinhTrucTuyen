@@ -106,5 +106,13 @@ public class ShipmentServiceImpl implements ShipmentService {
         Shipment updatedShipment = shipmentRepository.save(shipment);
         return shipmentMapper.toDTO(updatedShipment);
     }
+
+    @Override
+    public List<ShipmentDTO> getShipmentsByUserId(UUID userId) {
+        return shipmentRepository.findByOrder_User_Id(userId)
+                .stream()
+                .map(shipmentMapper::toDTO)
+                .collect(Collectors.toList());
+    }
 }
 

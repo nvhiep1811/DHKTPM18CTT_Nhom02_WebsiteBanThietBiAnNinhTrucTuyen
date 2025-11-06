@@ -1,6 +1,5 @@
 package secure_shop.backend.config.security;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,7 +56,7 @@ public class SecurityConfig {
                         // OPTIONS requests - CHO PHÉP TẤT CẢ (CORS preflight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Login/out - Register endpoints - NO authentication required
+                        // Auth endpoints - public login/register/reset
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/refresh",
@@ -65,23 +64,20 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification",
+                                "/api/auth/forgot-password",
+                                "/api/auth/verify-token",
+                                "/api/auth/reset-password",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/error"
                         ).permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
-                        // Reset password endpoints - NO authentication required
-                        .requestMatchers(
-                                "/api/auth/forgot-password",
-                                "/api/auth/verify-token",
-                                "/api/auth/reset-password"
-                        ).permitAll()
 
-                        // User endpoints require authentication
+                        // User endpoints
                         .requestMatchers("/api/users/me/**").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
 
-                        // Address endpoints - AUTHENTICATED
+                        // Address endpoints
                         .requestMatchers("/api/addresses/**").authenticated()
 
                         // Ticket endpoints
@@ -97,17 +93,64 @@ public class SecurityConfig {
                         .requestMatchers("/api/brands/**").hasRole("ADMIN")
 
                         // Category endpoints
-                        .requestMatchers("/api/categories", "/api/categories/active").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/active", "/api/categories/**").permitAll()
                         .requestMatchers("/api/categories/**").hasRole("ADMIN")
 
                         // Inventory endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/inventories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/inventories", "/api/inventories/**").permitAll()
                         .requestMatchers("/api/inventories/**").hasRole("ADMIN")
 
-                        // Media endpoints
-                        .requestMatchers("/api/media/**").permitAll()
+                        // === Media Asset endpoints ===
+                        .requestMatchers(HttpMethod.GET, "/api/media/product/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/media").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/media/{id}").hasRole("ADMIN")
 
-                        // Default: require authentication
+                        // Product endpoints
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/products",
+                                "/api/products/**",
+                                "/api/products/summary/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                        // Order endpoints
+                        .requestMatchers("/api/orders/my-orders", "/api/orders/cancel/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
+                        .requestMatchers("/api/orders/**", "/api/orders/confirm/**").hasRole("ADMIN")
+
+                        // === Payment endpoints ===
+                        .requestMatchers(HttpMethod.GET, "/api/payments/order/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/payments").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/payments", "/api/payments/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/payments/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/payments/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/payments/mark-paid/{id}").hasRole("ADMIN")
+
+                        // Shipment endpoints
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/shipments/my-shipments",
+                                "/api/shipments/order/**"
+                        ).authenticated()
+                        .requestMatchers("/api/shipments/**").hasRole("ADMIN")
+
+                        // Review endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/reviews", "/api/reviews/product/**").permitAll()
+                        .requestMatchers("/api/reviews/my-reviews", "/api/reviews/user/**").authenticated()
+                        .requestMatchers("/api/reviews/**").hasRole("ADMIN")
+
+                        // Warranty request endpoints
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/warranty-requests/order-item/**",
+                                "/api/warranty-requests/{id}",
+                                "/api/warranty-requests/user/my"
+                        ).authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/warranty-requests").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/warranty-requests/{id}").authenticated()
+                        .requestMatchers("/api/warranty-requests/**").hasRole("ADMIN")
+
+                        // Default: require authentication for everything else
                         .anyRequest().authenticated()
                 )
 

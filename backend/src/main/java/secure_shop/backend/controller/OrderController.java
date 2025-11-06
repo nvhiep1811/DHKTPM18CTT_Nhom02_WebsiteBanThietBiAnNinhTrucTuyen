@@ -6,7 +6,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.service.OrderService;
@@ -29,10 +31,8 @@ public class OrderController {
 
     @GetMapping("/my-orders")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<OrderDTO>> getMyOrders(Authentication authentication) {
-        // dùng 1 trong 2 cách dưới để lấy userId từ authentication vì không biết cái nào đúng =))
-        UUID userId = UUID.fromString(authentication.getName());
-//        UUID userId = UUID.fromString(authentication.getPrincipal().toString());
+    public ResponseEntity<List<OrderDTO>> getMyOrders(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        UUID userId = userDetails.getUser().getId();
         return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
     }
 
@@ -44,9 +44,9 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO dto, Authentication authentication) {
-        // Force userId from authentication to prevent security vulnerability
-        UUID userId = UUID.fromString(authentication.getName());
+    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO dto,
+                                                @AuthenticationPrincipal CustomUserDetails userDetails) {
+        UUID userId = userDetails.getUser().getId();
         if (dto.getUser() == null) {
             dto.setUser(new secure_shop.backend.dto.user.UserSummaryDTO());
         }
@@ -67,13 +67,13 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/confirm")
+    @PatchMapping("/confirm/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderDTO> confirmOrder(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.confirmOrder(id));
     }
 
-    @PatchMapping("/{id}/cancel")
+    @PatchMapping("/cancel/{id}")
     @PreAuthorize("@securityService.canAccessOrder(#id, authentication)")
     public ResponseEntity<OrderDTO> cancelOrder(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.cancelOrder(id));

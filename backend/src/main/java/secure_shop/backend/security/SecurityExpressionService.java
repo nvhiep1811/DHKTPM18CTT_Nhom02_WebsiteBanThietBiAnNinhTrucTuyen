@@ -3,8 +3,10 @@ package secure_shop.backend.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.entities.WarrantyRequest;
+import secure_shop.backend.repositories.OrderItemRepository;
 import secure_shop.backend.repositories.WarrantyRequestRepository;
 import secure_shop.backend.service.OrderService;
 import secure_shop.backend.service.ReviewService;
@@ -16,6 +18,7 @@ import java.util.UUID;
 public class SecurityExpressionService {
 
     private final OrderService orderService;
+    private final OrderItemRepository orderItemRepository;
     private final ReviewService reviewService;
     private final WarrantyRequestRepository warrantyRequestRepository;
 
@@ -40,6 +43,35 @@ public class SecurityExpressionService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Kiểm tra xem user có quyền truy cập review này không
+     * @param orderItemId ID của order item
+     * @param authentication Thông tin authentication
+     * @return true nếu user là admin hoặc owner của order chứa order item
+     */
+    public boolean canAccessOrderItem(Long orderItemId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof CustomUserDetails userDetails)) {
+            return false;
+        }
+
+        // Admin thì được phép toàn bộ
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (isAdmin) return true;
+
+        UUID userId = userDetails.getUser().getId();
+
+        return orderItemRepository.findById(orderItemId)
+                .map(orderItem -> orderItem.getOrder() != null &&
+                        orderItem.getOrder().getUser().getId().equals(userId))
+                .orElse(false);
     }
 
     public boolean canAccessReview(Long reviewId, Authentication authentication) {

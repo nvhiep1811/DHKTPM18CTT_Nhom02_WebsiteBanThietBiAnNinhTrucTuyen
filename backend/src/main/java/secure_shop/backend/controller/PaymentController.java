@@ -3,9 +3,14 @@ package secure_shop.backend.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.PaymentDTO;
 import secure_shop.backend.service.PaymentService;
 
@@ -20,7 +25,7 @@ public class PaymentController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<PaymentDTO>> getAllPayments(Pageable pageable) {
+    public ResponseEntity<Page<PaymentDTO>> getAllPayments(@PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(paymentService.getPaymentsPage(pageable));
     }
 
@@ -31,15 +36,16 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{orderId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@securityService.canAccessOrder(#orderId, authentication)")
     public ResponseEntity<PaymentDTO> getPaymentByOrderId(@PathVariable UUID orderId) {
         return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId));
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@securityService.canAccessOrder(#dto.orderId, authentication)")
     public ResponseEntity<PaymentDTO> createPayment(@RequestBody PaymentDTO dto) {
-        return ResponseEntity.ok(paymentService.createPayment(dto));
+        PaymentDTO saved = paymentService.createPayment(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
@@ -55,7 +61,7 @@ public class PaymentController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/mark-paid")
+    @PatchMapping("/mark-paid/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentDTO> markAsPaid(@PathVariable UUID id) {
         return ResponseEntity.ok(paymentService.markAsPaid(id));

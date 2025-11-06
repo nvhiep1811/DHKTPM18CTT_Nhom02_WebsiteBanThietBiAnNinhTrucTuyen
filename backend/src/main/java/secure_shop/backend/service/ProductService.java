@@ -21,5 +21,10 @@ public interface ProductService {
 
     Boolean deleteProduct(UUID id);
 
-    Page<ProductSummaryDTO> filterProducts(Boolean active, Long categoryId, Long brandId, Pageable pageable);
+    Page<ProductSummaryDTO> filterProducts(Boolean active,
+                                                  Long categoryId,
+                                                  Long brandId,
+                                                  String keyword,
+                                                  Pageable pageable);
+
 }

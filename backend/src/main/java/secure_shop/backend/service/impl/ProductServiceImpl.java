@@ -5,37 +5,38 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import secure_shop.backend.dto.product.ProductDTO;
-import secure_shop.backend.dto.product.ProductDetailsDTO;
-import secure_shop.backend.dto.product.ProductSummaryDTO;
-import secure_shop.backend.entities.Brand;
-import secure_shop.backend.entities.Category;
-import secure_shop.backend.entities.Product;
+import secure_shop.backend.dto.product.*;
+import secure_shop.backend.entities.*;
 import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.mapper.ProductMapper;
-import secure_shop.backend.repositories.BrandRepository;
-import secure_shop.backend.repositories.CategoryRepository;
-import secure_shop.backend.repositories.ProductRepository;
+import secure_shop.backend.repositories.*;
 import secure_shop.backend.service.ProductService;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
+
     private final ProductRepository productRepository;
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
-    public Page<ProductSummaryDTO> filterProducts(Boolean active, Long categoryId, Long brandId, Pageable pageable) {
+    @Override
+    public Page<ProductSummaryDTO> filterProducts(Boolean active,
+                                                  Long categoryId,
+                                                  Long brandId,
+                                                  String keyword,
+                                                  Pageable pageable) {
         return productRepository
-                .filterProducts(active, categoryId, brandId, pageable)
+                .filterProducts(active, categoryId, brandId, keyword, pageable)
                 .map(productMapper::toProductSummaryDTO);
     }
 
-
+    @Override
     public ProductDTO getProductById(UUID id) {
         Product product = productRepository.findProductById(id);
         if (product == null) {
@@ -44,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toProductDTO(product);
     }
 
+    @Override
     public ProductDetailsDTO getProductDetailsById(UUID id) {
         Product product = productRepository.findProductById(id);
         if (product == null) {
@@ -52,64 +54,95 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toProductDetailsDTO(product);
     }
 
+    @Override
     @Transactional
     public ProductDTO createProduct(ProductDetailsDTO dto) {
-        Product p = productMapper.toEntity(dto);
-        var savedProduct = productRepository.save(p);
-        return productMapper.toProductDTO(savedProduct);
+        Product product = productMapper.toEntity(dto);
+        product.setDeletedAt(null); // đảm bảo không gán nhầm
+        product.setActive(true);
+
+        var saved = productRepository.save(product);
+        return productMapper.toProductDTO(saved);
     }
 
+    @Override
     @Transactional
     public ProductDTO updateProduct(UUID id, ProductDetailsDTO dto) {
-        Product existingProduct = productRepository.findById(id)
+        Product existing = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
 
-        // Update basic fields
-        existingProduct.setSku(dto.getSku());
-        existingProduct.setName(dto.getName());
-        existingProduct.setListedPrice(dto.getListedPrice());
-        existingProduct.setActive(dto.getActive());
-        existingProduct.setShortDesc(dto.getShortDesc());
-        existingProduct.setLongDesc(dto.getLongDesc());
-        existingProduct.setThumbnailUrl(dto.getThumbnailUrl());
+        // Nếu sản phẩm đã bị xóa mềm → không cho cập nhật
+        if (existing.getDeletedAt() != null) {
+            throw new IllegalStateException("Cannot update a deleted product");
+        }
 
-        // Update brand relationship (shallow update - only set if changed)
+        existing.setSku(dto.getSku());
+        existing.setName(dto.getName());
+        existing.setListedPrice(dto.getListedPrice());
+        existing.setActive(dto.getActive());
+        existing.setShortDesc(dto.getShortDesc());
+        existing.setLongDesc(dto.getLongDesc());
+        existing.setThumbnailUrl(dto.getThumbnailUrl());
+
+        // Update brand
         if (dto.getBrand() != null && dto.getBrand().getId() != null) {
-            Brand brand = brandRepository.findById(dto.getBrand().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Brand", dto.getBrand().getId()));
-            existingProduct.setBrand(brand);
+            Brand brand = brandRepository.findById(dto.getBrand().getId());
+            if (brand == null) {
+                throw new ResourceNotFoundException("Brand", dto.getBrand().getId());
+            }
+            existing.setBrand(brand);
         } else {
-            existingProduct.setBrand(null);
+            existing.setBrand(null);
         }
 
-        // Update category relationship (shallow update - only set if changed)
+        // Update category
         if (dto.getCategory() != null && dto.getCategory().getId() != null) {
-            Category category = categoryRepository.findById(dto.getCategory().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category", dto.getCategory().getId()));
-            existingProduct.setCategory(category);
+            Category category = categoryRepository.findById(dto.getCategory().getId());
+            if (category == null) {
+                throw new ResourceNotFoundException("Category", dto.getCategory().getId());
+            }
+            existing.setCategory(category);
         } else {
-            existingProduct.setCategory(null);
+            existing.setCategory(null);
         }
 
-        // Note: mediaAssets and reviews should be managed via separate endpoints/services
-        // Not updated here to avoid accidentally breaking relationships
+        var updated = productRepository.save(existing);
+        return productMapper.toProductDTO(updated);
+    }
 
-        var updatedProduct = productRepository.save(existingProduct);
-        return productMapper.toProductDTO(updatedProduct);
+    // Soft delete
+    @Override
+    @Transactional
+    public Boolean deleteProduct(UUID id) {
+        Optional<Product> productOpt = productRepository.findById(id);
+        if (productOpt.isEmpty()) {
+            return false;
+        }
+
+        Product product = productOpt.get();
+
+        if (product.getDeletedAt() != null) {
+            return false;
+        }
+
+        productRepository.delete(product);
+        return true;
     }
 
     @Transactional
-    public Boolean deleteProduct(UUID id) {
-        if (!existsById(id)) {
-            return false;
-        }
-        productRepository.deleteById(id);
-        return true;
+    public ProductDTO restoreProduct(UUID id) {
+        Product product = productRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted Product", id));
+
+        product.setDeletedAt(null);
+        product.setActive(true);
+        productRepository.save(product);
+
+        return productMapper.toProductDTO(product);
     }
 
     @Override
     public Boolean existsById(UUID id) {
         return productRepository.existsById(id);
     }
-
 }

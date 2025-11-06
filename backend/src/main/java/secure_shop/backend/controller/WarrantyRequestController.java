@@ -3,10 +3,13 @@ package secure_shop.backend.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.ticket.WarrantyRequestDTO;
 import secure_shop.backend.service.WarrantyRequestService;
 
@@ -26,7 +29,7 @@ public class WarrantyRequestController {
         return ResponseEntity.ok(warrantyRequestService.getWarrantyRequestsPage(pageable));
     }
 
-    @GetMapping("/my-requests")
+    @GetMapping("/user/my")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<WarrantyRequestDTO>> getMyWarrantyRequests(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
@@ -40,7 +43,7 @@ public class WarrantyRequestController {
     }
 
     @GetMapping("/order-item/{orderItemId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@securityService.canAccessOrderItem(#orderItemId, authentication)")
     public ResponseEntity<List<WarrantyRequestDTO>> getWarrantyRequestsByOrderItem(@PathVariable Long orderItemId) {
         return ResponseEntity.ok(warrantyRequestService.getWarrantyRequestsByOrderItemId(orderItemId));
     }
@@ -48,7 +51,8 @@ public class WarrantyRequestController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WarrantyRequestDTO> createWarrantyRequest(@RequestBody WarrantyRequestDTO dto) {
-        return ResponseEntity.ok(warrantyRequestService.createWarrantyRequest(dto));
+        WarrantyRequestDTO saved = warrantyRequestService.createWarrantyRequest(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
@@ -64,19 +68,19 @@ public class WarrantyRequestController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/approve")
+    @PatchMapping("/approve/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WarrantyRequestDTO> approveWarrantyRequest(@PathVariable Long id) {
         return ResponseEntity.ok(warrantyRequestService.approveWarrantyRequest(id));
     }
 
-    @PatchMapping("/{id}/reject")
+    @PatchMapping("/reject/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WarrantyRequestDTO> rejectWarrantyRequest(@PathVariable Long id) {
         return ResponseEntity.ok(warrantyRequestService.rejectWarrantyRequest(id));
     }
 
-    @PatchMapping("/{id}/resolve")
+    @PatchMapping("/resolve/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WarrantyRequestDTO> resolveWarrantyRequest(@PathVariable Long id) {
         return ResponseEntity.ok(warrantyRequestService.resolveWarrantyRequest(id));

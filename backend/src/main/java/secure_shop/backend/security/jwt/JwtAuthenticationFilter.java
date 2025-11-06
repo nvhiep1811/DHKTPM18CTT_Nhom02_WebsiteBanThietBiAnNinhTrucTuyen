@@ -30,28 +30,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
 
     private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
-            // AUTH
+            // 🔐 AUTH - PUBLIC ENDPOINTS
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/refresh",
             "/api/auth/logout",
-            "/api/auth/register",
             "/api/auth/verify-email",
             "/api/auth/resend-verification",
             "/api/auth/forgot-password",
             "/api/auth/verify-token",
             "/api/auth/reset-password",
 
-            // PUBLIC CONTENT
-            "/api/articles/**",
+            // 📄 ARTICLES - PUBLIC VIEW
+            "/api/articles",
+            "/api/articles/",
+
+            // 🏷️ BRANDS - PUBLIC VIEW
             "/api/brands",
-            "/api/brands/**",
+            "/api/brands/",
+
+            // 📂 CATEGORIES - PUBLIC VIEW
             "/api/categories",
             "/api/categories/active",
-            "/api/inventories/**",
-            "/api/media/**",
+            "/api/categories/",
 
-            // OAUTH & ERRORS
+            // 🧮 INVENTORIES - PUBLIC VIEW
+            "/api/inventories",
+            "/api/inventories/",
+
+            // 🖼️ MEDIA - PUBLIC (upload/view handled by Supabase)
+            "/api/media",
+            "/api/media/",
+
+            // 🛒 PRODUCTS - PUBLIC GET
+            "/api/products",
+            "/api/products/",
+            "/api/products/summary/",
+
+            // 💬 REVIEWS - PUBLIC GET (product reviews)
+            "/api/reviews",
+            "/api/reviews/product/",
+
+            // 🌐 OAUTH & ERROR
             "/oauth2/",
             "/login/oauth2/",
             "/error"
@@ -76,7 +96,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         log.debug("JwtAuthFilter processing path={}, isPublic={}", path, isPublicEndpoint(path));
 
-        if (isPublicEndpoint(path)) {
+        if (isPublicEndpoint(path) && "GET".equalsIgnoreCase(request.getMethod())) {
             log.debug("Public endpoint: {} - skipping JWT authentication", path);
             chain.doFilter(request, response);
             return;

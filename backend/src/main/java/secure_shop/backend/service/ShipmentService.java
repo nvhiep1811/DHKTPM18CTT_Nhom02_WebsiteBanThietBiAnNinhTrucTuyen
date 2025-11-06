@@ -25,5 +25,7 @@ public interface ShipmentService {
     ShipmentDTO markAsShipped(Long id);
 
     ShipmentDTO markAsDelivered(Long id);
+
+    List<ShipmentDTO> getShipmentsByUserId(UUID userId);
 }
 

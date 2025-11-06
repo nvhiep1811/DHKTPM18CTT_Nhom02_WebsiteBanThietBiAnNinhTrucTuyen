@@ -3,10 +3,15 @@ package secure_shop.backend.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.product.ReviewDTO;
 import secure_shop.backend.service.ReviewService;
 
@@ -22,7 +27,7 @@ public class ReviewController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<ReviewDTO>> getAllReviews(Pageable pageable) {
+    public ResponseEntity<Page<ReviewDTO>> getAllReviews(@PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(reviewService.getReviewsPage(pageable));
     }
 
@@ -33,14 +38,16 @@ public class ReviewController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ReviewDTO>> getReviewsByUser(@PathVariable UUID userId, Authentication authentication) {
-        // Check if userId matches authenticated user or is admin
-        UUID currentUserId = UUID.fromString(authentication.getName());
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    public ResponseEntity<List<ReviewDTO>> getReviewsByUser(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        UUID currentUserId = userDetails.getUser().getId();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isAdmin && !currentUserId.equals(userId)) {
-            throw new RuntimeException("Cannot access other user's reviews");
+            throw new AccessDeniedException("Không được phép truy cập đánh giá của người dùng khác.");
         }
 
         return ResponseEntity.ok(reviewService.getReviewsByUserId(userId));
@@ -53,11 +60,11 @@ public class ReviewController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ReviewDTO> createReview(@RequestBody ReviewDTO dto, Authentication authentication) {
-        // Force userId from authentication to prevent spoofing
-        UUID userId = UUID.fromString(authentication.getName());
-        dto.setUserId(userId);
-        return ResponseEntity.ok(reviewService.createReview(dto));
+    public ResponseEntity<ReviewDTO> createReview(@RequestBody ReviewDTO dto,
+                                                  @AuthenticationPrincipal CustomUserDetails userDetails) {
+        dto.setUserId(userDetails.getUser().getId());
+        ReviewDTO saved = reviewService.createReview(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
@@ -73,13 +80,13 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/approve")
+    @PatchMapping("/approve/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReviewDTO> approveReview(@PathVariable Long id) {
         return ResponseEntity.ok(reviewService.approveReview(id));
     }
 
-    @PatchMapping("/{id}/reject")
+    @PatchMapping("/reject/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReviewDTO> rejectReview(@PathVariable Long id) {
         return ResponseEntity.ok(reviewService.rejectReview(id));
