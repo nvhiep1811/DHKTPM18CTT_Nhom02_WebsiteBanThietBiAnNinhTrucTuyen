@@ -8,12 +8,15 @@ import { toast } from 'react-toastify';
 import { userApi } from '../utils/api';
 import axiosInstance from '../utils/axiosConfig';
 import { authService } from '../utils/authService';
+import { imageUploadService } from '../utils/imageUploadService';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('account');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
@@ -22,7 +25,7 @@ const Profile: React.FC = () => {
   useEffect(() => {
     if (!user || user.role === "guest") navigate('/login');
     setUserEmail(user?.email || null);
-  }, [navigate]);
+  }, [navigate, user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -34,18 +37,131 @@ const Profile: React.FC = () => {
     id: user?.id || '',
     name: user?.name || '',
     phone: user?.phone || '',
+    avatarUrl: user?.avatarUrl || '', // Đổi từ avatar sang avatarUrl
   });
+
+  // Update formData when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        id: user.id || '',
+        name: user.name || '',
+        phone: user.phone || '',
+        avatarUrl: user.avatarUrl || '', // Đổi từ avatar sang avatarUrl
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   }
 
+  // Avatar Upload Handler
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+
+    try {
+      // imageUploadService.validateFile sẽ tự động validate và toast error
+      // nếu file không hợp lệ sẽ throw error
+      
+      const oldAvatarUrl = formData.avatarUrl; // Đổi từ avatar sang avatarUrl
+
+      // Upload new avatar - imageUploadService sẽ tự validate
+      const result = await imageUploadService.uploadImage(file, {
+        bucket: 'avatars',
+        folder: 'users'
+      });
+
+      console.log('Upload result:', result); // DEBUG
+
+      // Prepare update data with new avatar URL
+      const updateData = {
+        id: formData.id,
+        name: formData.name,
+        phone: formData.phone?.trim() || null,
+        avatarUrl: result.url // Đổi từ avatar sang avatarUrl để match với database
+      };
+
+      console.log('Updating profile with data:', updateData); // DEBUG
+
+      // Update to server
+      const updateResponse = await userApi.updateProfile(updateData);
+      console.log('Update response:', updateResponse); // DEBUG
+
+      // Delete old avatar after successful update (if exists)
+      if (oldAvatarUrl) {
+        try {
+          await imageUploadService.deleteImage(oldAvatarUrl, 'avatars');
+          console.log('Old avatar deleted successfully');
+        } catch (deleteError) {
+          console.error('Failed to delete old avatar:', deleteError);
+          // Không toast error ở đây vì ảnh mới đã upload thành công
+        }
+      }
+      
+      toast.success('Cập nhật ảnh đại diện thành công!');
+
+      // Refresh user data from server
+      const response = await axiosInstance.get("/auth/me");
+      const updatedUser = response.data;
+
+      // Update local state
+      setFormData(prev => ({ ...prev, avatarUrl: result.url }));
+
+      // Update Redux and localStorage
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        dispatch(restoreAuthSuccess({ user: updatedUser, accessToken: token }));
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    } catch (error: any) {
+      console.error('Avatar upload failed:', error);
+      
+      // imageUploadService đã toast error trong trường hợp validation fail
+      // Chỉ toast nếu là lỗi từ server
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (!error.message?.includes('File size') && !error.message?.includes('Only')) {
+        // Nếu không phải lỗi validation (đã được toast bởi imageUploadService)
+        toast.error('Tải ảnh lên thất bại, vui lòng thử lại!');
+      }
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    // Validate phone number
+    if (formData.phone) {
+      const phoneRegex = /^(\+84|0)[0-9]{9,10}$/;
+      if (!phoneRegex.test(formData.phone)) {
+        toast.error("Số điện thoại không hợp lệ! (VD: 0901234567 hoặc +84901234567)");
+        return;
+      }
+    }
+
     try {
-      await userApi.updateProfile(formData);
+      // Remove empty fields
+      const dataToUpdate = {
+        ...formData,
+        phone: formData.phone?.trim() || null, // Send null if empty
+      };
+
+      await userApi.updateProfile(dataToUpdate);
       toast.success("Cập nhật thông tin cá nhân thành công!");
 
       const response = await axiosInstance.get("/auth/me");
@@ -56,9 +172,10 @@ const Profile: React.FC = () => {
         dispatch(restoreAuthSuccess({ user: updatedUser, accessToken: token }));
         localStorage.setItem("user", JSON.stringify(updatedUser));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update profile failed:", error);
-      toast.error("Cập nhật thất bại, vui lòng thử lại!");
+      const errorMsg = error.response?.data?.message || "Cập nhật thất bại, vui lòng thử lại!";
+      toast.error(errorMsg);
     }
   };
 
@@ -145,6 +262,60 @@ const Profile: React.FC = () => {
         return (
           <form onSubmit={handleFormSubmit}>
             <h2 className="text-xl font-semibold text-zinc-800 mb-4">Thông tin cá nhân</h2>
+            
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-purple-200 shadow-lg">
+                  {formData.avatarUrl ? (
+                    <img 
+                      src={formData.avatarUrl} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-4xl font-bold">
+                      {formData.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Overlay on hover */}
+                <button
+                  type="button"
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {isUploadingAvatar ? (
+                    <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              
+              <p className="text-sm text-gray-500 mt-3 text-center">
+                Click vào ảnh để thay đổi
+                <br />
+                <span className="text-xs">(Tối đa 5MB, định dạng: JPEG, PNG, WebP)</span>
+              </p>
+            </div>
+
             <p className="text-gray-600 mb-4 text-sm sm:text-base">Email: {userEmail}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <input 
@@ -154,13 +325,17 @@ const Profile: React.FC = () => {
                 onChange={handleInputChange} 
                 placeholder="Họ tên" 
               />
-              <input 
-                className="border p-2 rounded text-sm sm:text-base" 
-                value={formData.phone} 
-                name="phone" 
-                onChange={handleInputChange} 
-                placeholder="Số điện thoại" 
-              />
+              <div className="flex flex-col">
+                <input 
+                  className="border p-2 rounded text-sm sm:text-base" 
+                  value={formData.phone} 
+                  name="phone" 
+                  onChange={handleInputChange} 
+                  placeholder="Số điện thoại" 
+                  type="tel"
+                />
+                <span className="text-xs text-gray-500 mt-1">VD: 0901234567 hoặc +84901234567</span>
+              </div>
               <input 
                 className="border p-2 rounded text-sm sm:text-base" 
                 placeholder="Ngày sinh" 
