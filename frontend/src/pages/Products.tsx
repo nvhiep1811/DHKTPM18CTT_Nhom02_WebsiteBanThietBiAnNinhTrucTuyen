@@ -18,6 +18,8 @@ interface Product {
   rating: number;
   reviewCount: number;
   category: string;
+  brand?: string;
+  brandId?: string;
   inStock: boolean;
 }
 
@@ -37,6 +39,7 @@ const Products: React.FC = () => {
     name: '',
     price: '',
     category: '',
+    brand: '',
     stock: '',
     image: '',
     description: ''
@@ -65,6 +68,8 @@ const Products: React.FC = () => {
         rating: 4.8,
         reviewCount: 124,
         category: 'camera',
+        brand: 'Hikvision',
+        brandId: '1',
         inStock: true
       },
       {
@@ -75,6 +80,8 @@ const Products: React.FC = () => {
         rating: 4.9,
         reviewCount: 89,
         category: 'access',
+        brand: 'Xiaomi',
+        brandId: '3',
         inStock: true
       },
       {
@@ -86,6 +93,8 @@ const Products: React.FC = () => {
         rating: 4.7,
         reviewCount: 156,
         category: 'alarm',
+        brand: 'Dahua',
+        brandId: '2',
         inStock: true
       },
       {
@@ -96,6 +105,8 @@ const Products: React.FC = () => {
         rating: 4.6,
         reviewCount: 203,
         category: 'camera',
+        brand: 'Hikvision',
+        brandId: '1',
         inStock: false
       },
       {
@@ -106,6 +117,8 @@ const Products: React.FC = () => {
         rating: 4.5,
         reviewCount: 78,
         category: 'smart',
+        brand: 'Xiaomi',
+        brandId: '3',
         inStock: true
       },
       {
@@ -117,6 +130,8 @@ const Products: React.FC = () => {
         rating: 4.8,
         reviewCount: 45,
         category: 'camera',
+        brand: 'Dahua',
+        brandId: '2',
         inStock: true
       }
     ];
@@ -199,6 +214,7 @@ const Products: React.FC = () => {
       name: newProductData.name,
       price: parseFloat(newProductData.price),
       category: newProductData.category,
+      brand: newProductData.brand || undefined,
       image: newProductData.image || 'https://via.placeholder.com/400x300?text=No+Image',
       rating: 0,
       reviewCount: 0,
@@ -210,6 +226,7 @@ const Products: React.FC = () => {
       name: '',
       price: '',
       category: '',
+      brand: '',
       stock: '',
       image: '',
       description: ''
@@ -435,6 +452,23 @@ const Products: React.FC = () => {
                   <option value="Hệ thống báo động">Hệ thống báo động</option>
                   <option value="Kiểm soát ra vào">Kiểm soát ra vào</option>
                   <option value="Thiết bị thông minh">Thiết bị thông minh</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thương hiệu
+                </label>
+                <select
+                  value={newProductData.brand}
+                  onChange={(e) => setNewProductData({...newProductData, brand: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Chọn thương hiệu</option>
+                  <option value="Hikvision">Hikvision</option>
+                  <option value="Dahua">Dahua</option>
+                  <option value="Xiaomi">Xiaomi</option>
+                  <option value="Khác">Khác</option>
                 </select>
               </div>
 

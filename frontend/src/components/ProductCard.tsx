@@ -12,6 +12,8 @@ interface Product {
   rating: number;
   reviewCount: number;
   category: string;
+  brand?: string;
+  brandId?: string;
   inStock: boolean;
 }
 
@@ -84,10 +86,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       <div className="p-4">
-        <div className="mb-2">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-cyan-500 font-medium uppercase tracking-wide">
             {product.category}
           </span>
+          {product.brand && (
+            <span className="text-xs text-purple-600 font-semibold bg-purple-50 px-2 py-1 rounded">
+              {product.brand}
+            </span>
+          )}
         </div>
 
         <h3 className="text-lg font-semibold text-zinc-800 mb-2 line-clamp-2 min-h-[3.5rem]">

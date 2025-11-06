@@ -15,6 +15,8 @@ interface Product {
   rating: number;
   reviewCount: number;
   category: string;
+  brand?: string;
+  brandId?: string;
   inStock: boolean;
 }
 
@@ -42,6 +44,8 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserR
         rating: 4.8,
         reviewCount: 124,
         category: 'Camera An Ninh',
+        brand: 'Hikvision',
+        brandId: '1',
         inStock: true
       },
       {
@@ -52,6 +56,8 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserR
         rating: 4.9,
         reviewCount: 89,
         category: 'Khóa Thông Minh',
+        brand: 'Xiaomi',
+        brandId: '3',
         inStock: true
       },
       {
@@ -63,6 +69,8 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserR
         rating: 4.7,
         reviewCount: 156,
         category: 'Báo Động',
+        brand: 'Dahua',
+        brandId: '2',
         inStock: true
       },
       {
@@ -73,6 +81,8 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserR
         rating: 4.6,
         reviewCount: 203,
         category: 'Camera An Ninh',
+        brand: 'Hikvision',
+        brandId: '1',
         inStock: false
       }
     ];
