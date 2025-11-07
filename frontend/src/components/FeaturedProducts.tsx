@@ -4,102 +4,32 @@ import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { productApi } from '../utils/api';
+import type { ProductSummary } from '../types/types';
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  rating: number;
-  reviewCount: number;
-  category: string;
-  brand?: string;
-  brandId?: string;
-  inStock: boolean;
-}
 
-interface FeaturedProductsProps {
-  userRole?: 'guest' | 'user' | 'admin';
-}
-
-const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserRole }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+const FeaturedProducts: React.FC = () => {
+  const [products, setProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Get user role from Redux store or props
-  const reduxUserRole = useSelector((state: any) => state.auth.user?.role || 'guest');
-  const userRole = propUserRole || reduxUserRole;
 
   // Mock data - In real app, this would be an API call
   useEffect(() => {
-    const mockProducts: Product[] = [
-      {
-        id: '1',
-        name: 'Camera IP Wifi 4K Ultra HD',
-        price: 2500000,
-        originalPrice: 3000000,
-        image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        rating: 4.8,
-        reviewCount: 124,
-        category: 'Camera An Ninh',
-        brand: 'Hikvision',
-        brandId: '1',
-        inStock: true
-      },
-      {
-        id: '2',
-        name: 'Khóa Cửa Thông Minh Vân Tay',
-        price: 4200000,
-        image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        rating: 4.9,
-        reviewCount: 89,
-        category: 'Khóa Thông Minh',
-        brand: 'Xiaomi',
-        brandId: '3',
-        inStock: true
-      },
-      {
-        id: '3',
-        name: 'Hệ Thống Báo Động Không Dây',
-        price: 1800000,
-        originalPrice: 2200000,
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        rating: 4.7,
-        reviewCount: 156,
-        category: 'Báo Động',
-        brand: 'Dahua',
-        brandId: '2',
-        inStock: true
-      },
-      {
-        id: '4',
-        name: 'Camera Ngoài Trời Chống Nước IP67',
-        price: 3200000,
-        image: 'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        rating: 4.6,
-        reviewCount: 203,
-        category: 'Camera An Ninh',
-        brand: 'Hikvision',
-        brandId: '1',
-        inStock: false
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await productApi.getAll({ page: 0, size: 4, sort: 'listedPrice,desc' });
+        setProducts(data.content);
+      } finally {
+        setLoading(false);
       }
-    ];
-
-    setTimeout(() => {
-      setProducts(mockProducts);
-      setLoading(false);
-    }, 1000);
+    };
+    fetchProducts();
   }, []);
 
-  const handleAddToCart = async(product: Product) => {
+  const handleAddToCart = async(product: ProductSummary) => {
     const success = await cartService.addToCart(product);
     if (success) {
-      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`);
       window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      toast.error('Thêm vào giỏ hàng thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -160,7 +90,6 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ userRole: propUserR
             >
               <ProductCard
                 product={product}
-                userRole={userRole}
                 onAddToCart={handleAddToCart}
               />
             </motion.div>

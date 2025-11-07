@@ -20,15 +20,17 @@ public class ProductMapper {
     private final CategoryMapper categoryMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final ReviewMapper reviewMapper;
+    private final InventoryMapper inventoryMapper;
 
     public ProductMapper(BrandMapper brandMapper,
                          CategoryMapper categoryMapper,
                          MediaAssetMapper mediaAssetMapper,
-                         ReviewMapper reviewMapper) {
+                         ReviewMapper reviewMapper, InventoryMapper inventoryMapper) {
         this.brandMapper = brandMapper;
         this.categoryMapper = categoryMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.reviewMapper = reviewMapper;
+        this.inventoryMapper = inventoryMapper;
     }
 
     public ProductDTO toProductDTO(Product p) {
@@ -45,6 +47,11 @@ public class ProductMapper {
                 .updatedAt(p.getUpdatedAt())
                 .deletedAt(p.getDeletedAt())
                 .thumbnailUrl(p.getThumbnailUrl())
+                .inventory(inventoryMapper.toDTO(p.getInventory()))
+                .brand(brandMapper.toDTO(p.getBrand()))
+                .category(categoryMapper.toSummaryDTO(p.getCategory()))
+                .rating(p.getRating())
+                .reviewCount(p.getReviewCount())
                 .build();
     }
 
@@ -65,6 +72,12 @@ public class ProductMapper {
                 .name(p.getName())
                 .listedPrice(p.getListedPrice())
                 .thumbnailUrl(p.getThumbnailUrl())
+                .brand(p.getBrand() != null ? brandMapper.toDTO(p.getBrand()) : null)
+                .category(p.getCategory() != null ? categoryMapper.toSummaryDTO(p.getCategory()) : null)
+                .availableStock(p.getInventory().getOnHand() - p.getInventory().getReserved())
+                .inStock(p.getInventory().getOnHand() > p.getInventory().getReserved())
+                .rating(p.getRating())
+                .reviewCount(p.getReviewCount())
                 .build();
     }
 
@@ -86,7 +99,7 @@ public class ProductMapper {
                 .listedPrice(p.getListedPrice())
                 .active(p.getActive())
                 .brand(p.getBrand() != null ? brandMapper.toDTO(p.getBrand()) : null)
-                .category(p.getCategory() != null ? categoryMapper.toDTO(p.getCategory()) : null)
+                .category(p.getCategory() != null ? categoryMapper.toSummaryDTO(p.getCategory()) : null)
                 .shortDesc(p.getShortDesc())
                 .longDesc(p.getLongDesc())
                 .mediaAssets(p.getMediaAssets() != null ?
@@ -94,7 +107,8 @@ public class ProductMapper {
                                 .map(mediaAssetMapper::toDTO)
                                 .collect(Collectors.toList())
                         : Collections.emptyList())
-                .inventory(null) // keep mapping decision to InventoryMapper/service
+                .availableStock(p.getInventory().getOnHand() - p.getInventory().getReserved())
+                .inStock(p.getInventory().getOnHand() > p.getInventory().getReserved())
                 .reviews(p.getReviews() != null ?
                         p.getReviews().stream()
                                 .map(reviewMapper::toDTO)
@@ -104,6 +118,8 @@ public class ProductMapper {
                 .updatedAt(p.getUpdatedAt())
                 .deletedAt(p.getDeletedAt())
                 .thumbnailUrl(p.getThumbnailUrl())
+                .rating(p.getRating())
+                .reviewCount(p.getReviewCount())
                 .build();
     }
 
@@ -134,17 +150,16 @@ public class ProductMapper {
         product.setCategory(dto.getCategory() != null ? categoryMapper.toEntity(dto.getCategory()) : null);
 
         // Map media assets and ensure bi-directional link to product
-        // Product.mediaAssets is List<MediaAsset>, not Set
-        List<MediaAsset> mappedMedia = dto.getMediaAssets() != null
-                ? dto.getMediaAssets().stream()
-                    .map(mediaAssetMapper::toEntity)
-                    .collect(Collectors.toList())
-                : new ArrayList<>();
-        for (MediaAsset ma : mappedMedia) {
-            if (ma != null) {
-                ma.setProduct(product);
+        // Product.mediaAssets is List<String>, not Set
+        List<MediaAsset> mappedMedia = new ArrayList<>();
+        if (dto.getMediaAssets() != null) {
+            for (var mediaDto : dto.getMediaAssets()) {
+                MediaAsset mediaAsset = mediaAssetMapper.toEntity(mediaDto);
+                mediaAsset.setProduct(product); // Set back-reference
+                mappedMedia.add(mediaAsset);
             }
         }
+
         product.setMediaAssets(mappedMedia);
 
         // Don't map reviews from client DTO - reviews should be managed via ReviewService

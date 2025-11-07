@@ -24,7 +24,12 @@ public class ProductDTO implements Serializable {
     private String shortDesc;
 
     private BrandDTO brand;
-    private CategoryDTO category;
+    private CategorySummaryDTO category;
+
+    private InventoryDTO inventory;
+
+    private Double rating;
+    private Integer reviewCount;
 
     // Ảnh đại diện (lấy từ mediaAssets[0] nếu có)
     private String thumbnailUrl;

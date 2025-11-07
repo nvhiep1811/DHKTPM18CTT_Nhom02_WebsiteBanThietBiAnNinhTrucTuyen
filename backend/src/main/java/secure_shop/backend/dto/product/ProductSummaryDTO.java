@@ -19,4 +19,10 @@ public class ProductSummaryDTO implements Serializable {
     private String name;
     private BigDecimal listedPrice;
     private String thumbnailUrl;
+    private Integer availableStock;
+    private Boolean inStock;
+    private CategorySummaryDTO category;
+    private BrandDTO brand;
+    private Double rating;
+    private Integer reviewCount;
 }

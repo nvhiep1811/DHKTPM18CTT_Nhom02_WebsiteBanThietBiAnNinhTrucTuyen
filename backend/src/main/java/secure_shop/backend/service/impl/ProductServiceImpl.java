@@ -32,8 +32,7 @@ public class ProductServiceImpl implements ProductService {
                                                   String keyword,
                                                   Pageable pageable) {
         return productRepository
-                .filterProducts(active, categoryId, brandId, keyword, pageable)
-                .map(productMapper::toProductSummaryDTO);
+                .filterProducts(active, categoryId, brandId, keyword, pageable);
     }
 
     @Override
@@ -46,12 +45,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProductDetailsDTO getProductDetailsById(UUID id) {
-        Product product = productRepository.findProductById(id);
-        if (product == null) {
-            throw new ResourceNotFoundException("Product", id);
-        }
-        return productMapper.toProductDetailsDTO(product);
+        return productRepository.findByIdWithRelations(id)
+                .map(productMapper::toProductDetailsDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
     }
 
     @Override

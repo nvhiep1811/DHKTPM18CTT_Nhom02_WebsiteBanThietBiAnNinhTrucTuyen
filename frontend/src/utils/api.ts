@@ -1,14 +1,53 @@
+import type { BrandQueryParams, ProductQueryParams } from "../types/query";
+import type {
+  Brand,
+  CategorySummary,
+  ProductDetail,
+  ProductSummary,
+} from "../types/types";
 import axiosInstance from "./axiosConfig";
+
+// Category API
+export const categoryApi = {
+  getAll: async () => {
+    const response = await axiosInstance.get<CategorySummary[]>(
+      "/categories/active"
+    );
+    return response.data;
+  },
+  getById: async (id: string) => {
+    const response = await axiosInstance.get(`/categories/${id}`);
+    return response.data;
+  },
+};
+
+// Brand API
+export const brandApi = {
+  getAll: async (params?: BrandQueryParams) => {
+    const response = await axiosInstance.get<{
+      content: Brand[];
+      page: { totalPages: number; totalElements: number };
+    }>("/brands", { params });
+    return response.data;
+  },
+  getById: async (id: string) => {
+    const response = await axiosInstance.get(`/brands/${id}`);
+    return response.data;
+  },
+};
 
 // Products API
 export const productApi = {
-  getAll: async () => {
-    const response = await axiosInstance.get("/products");
+  getAll: async (params?: ProductQueryParams) => {
+    const response = await axiosInstance.get<{
+      content: ProductSummary[];
+      page: { totalPages: number; totalElements: number };
+    }>("/products", { params });
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await axiosInstance.get(`/products/${id}`);
+    const response = await axiosInstance.get<ProductDetail>(`/products/${id}`);
     return response.data;
   },
 

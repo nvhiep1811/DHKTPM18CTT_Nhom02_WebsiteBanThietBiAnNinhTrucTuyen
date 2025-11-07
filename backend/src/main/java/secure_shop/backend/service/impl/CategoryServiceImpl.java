@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import secure_shop.backend.dto.product.CategoryDTO;
+import secure_shop.backend.dto.product.CategorySummaryDTO;
 import secure_shop.backend.entities.Category;
 import secure_shop.backend.mapper.CategoryMapper;
 import secure_shop.backend.repositories.CategoryRepository;
@@ -43,12 +44,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Cacheable(value = "categories:active")
     @Transactional(readOnly = true)
-    public List<CategoryDTO> getAllActive() {
+    public List<CategorySummaryDTO> getAllActive() {
         log.info("Fetching active categories from DB (not cache)");
         return categoryRepository.findAll()
                 .stream()
                 .filter(Category::getActive)
-                .map(categoryMapper::toDTO)
+                .map(categoryMapper::toSummaryDTO)
                 .collect(Collectors.toList());
     }
 
