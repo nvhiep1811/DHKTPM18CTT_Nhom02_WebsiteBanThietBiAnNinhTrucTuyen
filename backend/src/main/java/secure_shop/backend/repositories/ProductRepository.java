@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import secure_shop.backend.dto.product.ProductSummaryDTO;
 import secure_shop.backend.entities.Product;
 
 import java.util.Optional;
@@ -15,25 +16,46 @@ import java.util.UUID;
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     Product findProductById(UUID id);
 
+    @Query("""
+        SELECT p FROM Product p
+        LEFT JOIN FETCH p.brand
+        LEFT JOIN FETCH p.category
+        LEFT JOIN FETCH p.mediaAssets
+        LEFT JOIN FETCH p.inventory
+        WHERE p.id = :id
+    """)
+    Optional<Product> findByIdWithRelations(@Param("id") UUID id);
+
     @Query("SELECT p FROM Product p WHERE p.id = :id AND p.deletedAt IS NOT NULL")
     Optional<Product> findDeletedById(@Param("id") UUID id);
 
     @Query("""
-    SELECT p FROM Product p
-    WHERE (:active IS NULL OR p.active = :active)
-      AND (:categoryId IS NULL OR p.category.id = :categoryId)
-      AND (:brandId IS NULL OR p.brand.id = :brandId)
-      AND (
-            COALESCE(:keyword, '') = '' OR
-            LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(p.shortDesc) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(p.longDesc) LIKE LOWER(CONCAT('%', :keyword, '%'))
-          )
-    """)
-    Page<Product> filterProducts(@Param("active") Boolean active,
-                                 @Param("categoryId") Long categoryId,
-                                 @Param("brandId") Long brandId,
-                                 @Param("keyword") String keyword,
-                                 Pageable pageable);
+        SELECT new secure_shop.backend.dto.product.ProductSummaryDTO(
+            p.id,
+            p.sku,
+            p.name,
+            p.listedPrice,
+            p.thumbnailUrl,
+            i.onHand - i.reserved,
+            (CASE WHEN i.onHand - i.reserved > 0 THEN true ELSE false END),
+            new secure_shop.backend.dto.product.CategorySummaryDTO(c.id, c.name, c.imageUrl),
+            new secure_shop.backend.dto.product.BrandDTO(b.id, b.name),
+            p.rating,
+            p.reviewCount
+        )
+        FROM Product p
+        LEFT JOIN p.category c
+        LEFT JOIN p.brand b
+        LEFT JOIN p.inventory i
+        WHERE p.deletedAt IS NULL
+          AND (:active IS NULL OR p.active = :active)
+          AND (:categoryId IS NULL OR c.id = :categoryId)
+          AND (:brandId IS NULL OR b.id = :brandId)
+          AND LOWER(p.name) LIKE LOWER(CONCAT('%', COALESCE(:keyword, ''), '%'))
+        """)
+    Page<ProductSummaryDTO> filterProducts(Boolean active,
+                                           Long categoryId,
+                                           Long brandId,
+                                           String keyword,
+                                           Pageable pageable);
 }

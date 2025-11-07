@@ -1,44 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Eye, Star, Trash2 } from 'lucide-react';
+import { ShoppingCart, Eye, Star, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  rating: number;
-  reviewCount: number;
-  category: string;
-  brand?: string;
-  brandId?: string;
-  inStock: boolean;
-}
+import { toast } from 'react-toastify';
+import type { ProductSummary } from '../types/types';
 
 interface ProductCardProps {
-  product: Product;
-  userRole?: 'guest' | 'user' | 'admin';
-  onAddToCart?: (product: Product) => void;
-  onDeleteProduct?: (productId: string) => void;
+  product: ProductSummary;
+  onAddToCart?: (product: ProductSummary) => Promise<void> | void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ 
-  product, 
-  userRole = 'guest',
-  onAddToCart,
-  onDeleteProduct
-}) => {
-  const handleAddToCart = async () => {
-    await onAddToCart?.(product);
-  };
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+  const [isAdding, setIsAdding] = useState(false);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('vi-VN', {
       style: 'currency',
-      currency: 'VND'
+      currency: 'VND',
     }).format(price);
+
+  const handleAddToCart = async () => {
+    if (!product.inStock) {
+      toast.warning('Sản phẩm hiện đã hết hàng!');
+      return;
+    }
+
+    if (product.availableStock !== undefined && product.availableStock <= 0) {
+      toast.warning('Sản phẩm tạm hết trong kho!');
+      return;
+    }
+
+    if (!onAddToCart) {
+      toast.error('Không thể thêm sản phẩm — chưa có handler.');
+      return;
+    }
+
+    try {
+      setIsAdding(true);
+      await onAddToCart(product);
+      window.dispatchEvent(new Event('cartUpdated'));
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -46,94 +49,80 @@ const ProductCard: React.FC<ProductCardProps> = ({
       whileHover={{ y: -5 }}
       className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col group relative"
     >
-
+      {/* Product image */}
       <div className="relative">
         <img
-          src={product.image}
+          src={product.thumbnailUrl}
           alt={product.name}
           className="w-full h-48 object-cover"
           loading="lazy"
         />
-        {product.originalPrice && product.originalPrice > product.price && (
-          <div className="absolute top-2 left-2 bg-pink-400 text-white px-2 py-1 rounded text-xs font-semibold">
-            -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-          </div>
-        )}
+
         {!product.inStock && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <span className="text-white font-semibold">Hết hàng</span>
           </div>
         )}
 
-        {/* Eye icon for all users - always visible on hover */}
+        {/* View details */}
         <Link
           to={`/products/${product.id}`}
           className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-colors opacity-0 group-hover:opacity-100"
         >
           <Eye className="h-4 w-4 text-zinc-800" />
         </Link>
-
-        {/* Admin delete button */}
-        {userRole === 'admin' && (
-          <button
-            onClick={() => onDeleteProduct?.(product.id)}
-            className="absolute top-2 right-14 bg-red-600 p-2 rounded-full shadow-md hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
-            aria-label="Xóa sản phẩm"
-          >
-            <Trash2 className="h-4 w-4 text-white" />
-          </button>
-        )}
       </div>
 
-      <div className="p-4">
+      {/* Product info */}
+      <div className="p-4 flex flex-col flex-1">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-cyan-500 font-medium uppercase tracking-wide">
-            {product.category}
+            {product.category.name}
           </span>
           {product.brand && (
             <span className="text-xs text-purple-600 font-semibold bg-purple-50 px-2 py-1 rounded">
-              {product.brand}
+              {product.brand.name}
             </span>
           )}
         </div>
 
         <h3 className="text-lg font-semibold text-zinc-800 mb-2 line-clamp-2 min-h-[3.5rem]">
-          <Link to={`/products/${product.id}`} className="hover:text-purple-600 transition-colors">
+          <Link
+            to={`/products/${product.id}`}
+            className="hover:text-purple-600 transition-colors"
+          >
             {product.name}
           </Link>
         </h3>
 
-        <div className="flex items-center mb-3">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`h-4 w-4 ${
-                  i < Math.floor(product.rating)
-                    ? 'text-yellow-400 fill-current'
-                    : 'text-gray-300'
-                }`}
-              />
-            ))}
+        {product.reviewCount > 0 && (
+          <div className="flex items-center mb-3">
+            <div className="flex items-center">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${
+                    i < Math.floor(product.rating)
+                      ? 'text-yellow-400 fill-current'
+                      : 'text-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-sm text-gray-600 ml-2">
+              ({product.reviewCount})
+            </span>
           </div>
-          <span className="text-sm text-gray-600 ml-2">
-            ({product.reviewCount})
+        )}
+
+        {/* Price */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xl font-bold text-purple-600">
+            {formatPrice(product.listedPrice)}
           </span>
         </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl font-bold text-purple-600">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-sm text-gray-500 line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
-          </div>
-        </div>
-
+        {/* Actions */}
         <div className="mt-auto flex space-x-2">
           <Link
             to={`/products/${product.id}`}
@@ -141,11 +130,27 @@ const ProductCard: React.FC<ProductCardProps> = ({
           >
             Xem chi tiết
           </Link>
-          {product.inStock && (
+
+          {product.inStock ? (
             <button
               onClick={handleAddToCart}
-              className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
+              disabled={isAdding}
+              className={`bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors ${
+                isAdding ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
               aria-label="Thêm vào giỏ hàng"
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="h-4 w-4" />
+              )}
+            </button>
+          ) : (
+            <button
+              disabled
+              className="bg-gray-200 text-gray-500 p-2 rounded-lg cursor-not-allowed"
+              aria-label="Hết hàng"
             >
               <ShoppingCart className="h-4 w-4" />
             </button>

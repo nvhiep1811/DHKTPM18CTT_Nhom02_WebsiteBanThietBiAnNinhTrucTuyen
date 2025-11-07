@@ -18,7 +18,8 @@ import java.util.*;
                 @Index(name = "idx_products_active", columnList = "active"),
                 @Index(name = "idx_products_category", columnList = "category_id"),
                 @Index(name = "idx_products_brand", columnList = "brand_id"),
-                @Index(name = "idx_products_name", columnList = "name")
+                @Index(name = "idx_products_name", columnList = "name"),
+                @Index(name = "idx_products_listed_price", columnList = "listed_price")
         }
 )
 @SQLDelete(sql = "UPDATE products SET deleted_at = now(), active = false WHERE id = ?")
@@ -74,6 +75,19 @@ public class Product extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @NotNull(message = "Điểm đánh giá không được để trống")
+    @DecimalMin(value = "0.0", inclusive = true, message = "Điểm đánh giá không được nhỏ hơn 0")
+    @DecimalMax(value = "5.0", inclusive = true, message = "Điểm đánh giá không được lớn hơn 5")
+    @Builder.Default
+    @Column(nullable = false)
+    private Double rating = 0.0;
+
+    @NotNull(message = "Số lượng đánh giá không được để trống")
+    @Min(value = 0, message = "Số lượng đánh giá không được âm")
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer reviewCount = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
@@ -110,5 +124,27 @@ public class Product extends BaseEntity {
 
     public boolean isDeleted() {
         return this.deletedAt != null;
+    }
+
+    // ===== Logic cập nhật rating =====
+    public void updateRating(double newRating) {
+        if (reviewCount == null) reviewCount = 0;
+        if (rating == null) rating = 0.0;
+
+        double total = rating * reviewCount;
+        reviewCount++;
+        rating = (total + newRating) / reviewCount;
+    }
+
+    public void removeReview(double removedRating) {
+        if (reviewCount == null || reviewCount <= 1) {
+            rating = 0.0;
+            reviewCount = 0;
+            return;
+        }
+
+        double total = rating * reviewCount;
+        reviewCount--;
+        rating = (total - removedRating) / reviewCount;
     }
 }

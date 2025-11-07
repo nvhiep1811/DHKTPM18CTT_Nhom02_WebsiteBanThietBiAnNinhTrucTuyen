@@ -9,10 +9,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class InventoryDTO {
-    private Long id;
     private Integer onHand;
     private Integer reserved;
-    private UUID productId;
-    private String productName;
+    private boolean inStock;
 }
 

@@ -10,10 +10,11 @@ import { Link, useNavigate } from 'react-router-dom';
 interface CartItem {
   id: string;
   name: string;
-  price: number;
-  image: string;
+  listedPrice: number;
+  thumbnailUrl: string;
   quantity: number;
   inStock: boolean;
+  availableStock?: number;
 }
 
 const Cart: React.FC = () => {
@@ -67,7 +68,7 @@ const Cart: React.FC = () => {
   };
 
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    return cartItems.reduce((total, item) => total + item.listedPrice * item.quantity, 0);
   };
 
   const formatPrice = (price: number) => {
@@ -170,7 +171,7 @@ const Cart: React.FC = () => {
                     {/* Product Image */}
                     <div className="w-24 h-24 flex-shrink-0">
                       <img
-                        src={item.image}
+                        src={item.thumbnailUrl}
                         alt={item.name}
                         className="w-full h-full object-cover rounded-lg"
                       />
@@ -185,10 +186,25 @@ const Cart: React.FC = () => {
                         {item.name}
                       </Link>
                       <p className="text-purple-600 font-bold text-xl mb-3">
-                        {formatPrice(item.price)}
+                        {formatPrice(item.listedPrice)}
                       </p>
 
                       {/* Quantity Controls */}
+                      {item.availableStock !== undefined && (
+                        <p className="text-sm text-gray-500 my-2">
+                          Còn lại:{" "}
+                          <span
+                            className={`font-medium ${
+                              item.availableStock - item.quantity <= 3
+                                ? "text-red-500"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {item.availableStock - item.quantity} sản phẩm
+                          </span>{" "}
+                          trong kho
+                        </p>
+                      )}
                       <div className="flex items-center gap-4">
                         <div className="flex items-center border border-gray-300 rounded-lg">
                           <button
@@ -198,12 +214,21 @@ const Cart: React.FC = () => {
                           >
                             <Minus className="w-4 h-4 text-gray-600" />
                           </button>
+
                           <span className="px-4 py-2 font-semibold text-zinc-800 min-w-[3rem] text-center">
                             {item.quantity}
                           </span>
+
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="p-2 hover:bg-gray-100 transition-colors"
+                            onClick={() => {
+                              if (item.availableStock && item.quantity >= item.availableStock) {
+                                toast.info(`Chỉ còn ${item.availableStock} sản phẩm trong kho.`);
+                                return;
+                              }
+                              updateQuantity(item.id, item.quantity + 1);
+                            }}
+                            className="p-2 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!!item.availableStock && item.quantity >= item.availableStock}
                           >
                             <Plus className="w-4 h-4 text-gray-600" />
                           </button>
@@ -219,9 +244,7 @@ const Cart: React.FC = () => {
                       </div>
 
                       {!item.inStock && (
-                        <p className="text-red-500 text-sm mt-2">
-                          Sản phẩm tạm hết hàng
-                        </p>
+                        <p className="text-red-500 text-sm mt-2">Sản phẩm tạm hết hàng</p>
                       )}
                     </div>
 
@@ -229,7 +252,7 @@ const Cart: React.FC = () => {
                     <div className="text-right">
                       <p className="text-sm text-gray-500 mb-1">Tổng</p>
                       <p className="text-xl font-bold text-zinc-800">
-                        {formatPrice(item.price * item.quantity)}
+                        {formatPrice(item.listedPrice * item.quantity)}
                       </p>
                     </div>
                   </div>

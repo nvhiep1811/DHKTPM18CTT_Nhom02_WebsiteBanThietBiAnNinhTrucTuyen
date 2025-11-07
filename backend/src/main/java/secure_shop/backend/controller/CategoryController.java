@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.dto.product.CategoryDTO;
+import secure_shop.backend.dto.product.CategorySummaryDTO;
 import secure_shop.backend.service.CategoryService;
 
 import java.util.List;
@@ -20,7 +21,7 @@ public class CategoryController {
 
     // ✅ Public endpoint
     @GetMapping("/active")
-    public ResponseEntity<List<CategoryDTO>> getAllActive() {
+    public ResponseEntity<List<CategorySummaryDTO>> getAllActive() {
         return ResponseEntity.ok(categoryService.getAllActive());
     }
 

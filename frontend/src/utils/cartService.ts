@@ -1,12 +1,14 @@
 import axios from "axios";
+import { toast } from "react-toastify";
 
 export interface CartItem {
   id: string;
   name: string;
-  price: number;
-  image: string;
-  quantity: number;
+  listedPrice: number;
+  thumbnailUrl: string;
   inStock: boolean;
+  availableStock?: number; // tồn kho thực tế
+  quantity: number;
 }
 
 const API_BASE_URL =
@@ -14,76 +16,113 @@ const API_BASE_URL =
 
 class CartService {
   private isAuthenticated(): boolean {
-    // Check if user is logged in
-    const token = localStorage.getItem("authToken");
-    return !!token;
+    return !!localStorage.getItem("authToken");
   }
 
-  // Get cart from appropriate source
+  // === Get Cart ===
   async getCart(): Promise<CartItem[]> {
     if (this.isAuthenticated()) {
       try {
-        // Fetch from backend session
-        const response = await axios.get(`${API_BASE_URL}/cart`, {
-          withCredentials: true, // Important for session cookies
+        const { data } = await axios.get(`${API_BASE_URL}/cart`, {
+          withCredentials: true,
         });
-        return response.data;
-      } catch (error) {
-        console.error("Failed to fetch cart from backend:", error);
+        return data;
+      } catch {
+        toast.error("Lỗi! Không thể tải giỏ hàng.");
         return [];
       }
     } else {
-      // Get from localStorage for guests
-      const cart = localStorage.getItem("guestCart");
-      return cart ? JSON.parse(cart) : [];
+      try {
+        const cart = localStorage.getItem("guestCart");
+        return cart ? JSON.parse(cart) : [];
+      } catch {
+        localStorage.removeItem("guestCart");
+        return [];
+      }
     }
   }
 
-  // Add item to cart
+  // === Add Item to Cart ===
   async addToCart(
     product: {
       id: string;
       name: string;
-      price: number;
-      image: string;
+      listedPrice: number;
+      thumbnailUrl: string;
       inStock: boolean;
+      availableStock?: number;
     },
-    quantity?: number
+    quantity = 1
   ): Promise<boolean> {
+    const maxQty = product.availableStock ?? 99;
+
+    if (!product.inStock || maxQty <= 0) {
+      toast.warning("Sản phẩm hiện không có sẵn.");
+      return false;
+    }
+
+    if (quantity > maxQty) {
+      toast.warning(`Chỉ còn ${maxQty} sản phẩm trong kho.`);
+      quantity = maxQty;
+    }
+
     if (this.isAuthenticated()) {
       try {
-        // Add to backend session
         await axios.post(
           `${API_BASE_URL}/cart/add`,
-          { productId: product.id, quantity: quantity || 1 },
+          { productId: product.id, quantity },
           { withCredentials: true }
         );
+        toast.success("Đã thêm sản phẩm vào giỏ hàng!");
         return true;
-      } catch (error) {
-        console.error("Failed to add to cart:", error);
+      } catch {
+        toast.error("Lỗi! Không thể thêm sản phẩm vào giỏ hàng.");
         return false;
       }
     } else {
-      // Add to localStorage for guests
       const cart = await this.getCart();
-      const existingItem = cart.find((item) => item.id === product.id);
+      const existing = cart.find((i) => i.id === product.id);
 
-      if (existingItem) {
-        existingItem.quantity += quantity || 1;
+      if (existing) {
+        const newQty = existing.quantity + quantity;
+        if (newQty > maxQty) {
+          existing.quantity = maxQty;
+          toast.info("Đã đạt số lượng tối đa theo hàng tồn kho.");
+          return false;
+        } else {
+          existing.quantity = newQty;
+        }
       } else {
-        cart.push({
-          ...product,
-          quantity: quantity || 1,
-        });
+        cart.push({ ...product, quantity: Math.min(quantity, maxQty) });
       }
 
       localStorage.setItem("guestCart", JSON.stringify(cart));
+      toast.success("Đã thêm sản phẩm vào giỏ hàng!");
       return true;
     }
   }
 
-  // Update quantity
+  // === Update Quantity ===
   async updateQuantity(productId: string, quantity: number): Promise<boolean> {
+    const cart = await this.getCart();
+    const item = cart.find((i) => i.id === productId);
+
+    if (!item) {
+      toast.error("Sản phẩm không tồn tại trong giỏ hàng.");
+      return false;
+    }
+
+    const maxQty = item.availableStock ?? 99;
+
+    if (quantity > maxQty) {
+      toast.warning(`Số lượng yêu cầu vượt quá tồn kho (${maxQty}).`);
+      quantity = maxQty;
+    }
+
+    if (quantity <= 0) {
+      return this.removeItem(productId);
+    }
+
     if (this.isAuthenticated()) {
       try {
         await axios.put(
@@ -92,23 +131,18 @@ class CartService {
           { withCredentials: true }
         );
         return true;
-      } catch (error) {
-        console.error("Failed to update quantity:", error);
+      } catch {
+        toast.error("Lỗi! Không thể cập nhật số lượng sản phẩm.");
         return false;
       }
     } else {
-      const cart = await this.getCart();
-      const item = cart.find((i) => i.id === productId);
-      if (item) {
-        item.quantity = quantity;
-        localStorage.setItem("guestCart", JSON.stringify(cart));
-        return true;
-      }
-      return false;
+      item.quantity = quantity;
+      localStorage.setItem("guestCart", JSON.stringify(cart));
+      return true;
     }
   }
 
-  // Remove item
+  // === Remove Item ===
   async removeItem(productId: string): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
@@ -116,19 +150,18 @@ class CartService {
           withCredentials: true,
         });
         return true;
-      } catch (error) {
-        console.error("Failed to remove item:", error);
+      } catch {
         return false;
       }
     } else {
       const cart = await this.getCart();
-      const filteredCart = cart.filter((item) => item.id !== productId);
-      localStorage.setItem("guestCart", JSON.stringify(filteredCart));
+      const filtered = cart.filter((i) => i.id !== productId);
+      localStorage.setItem("guestCart", JSON.stringify(filtered));
       return true;
     }
   }
 
-  // Clear cart
+  // === Clear Cart ===
   async clearCart(): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
@@ -136,8 +169,8 @@ class CartService {
           withCredentials: true,
         });
         return true;
-      } catch (error) {
-        console.error("Failed to clear cart:", error);
+      } catch {
+        toast.error("Lỗi! Không thể xóa toàn bộ giỏ hàng.");
         return false;
       }
     } else {
@@ -146,7 +179,7 @@ class CartService {
     }
   }
 
-  // Merge guest cart to user cart after login
+  // === Merge Guest Cart After Login ===
   async mergeGuestCart(): Promise<void> {
     const guestCart = localStorage.getItem("guestCart");
     if (!guestCart) return;
@@ -155,24 +188,21 @@ class CartService {
     if (items.length === 0) return;
 
     try {
-      // Send guest cart to backend to merge with session cart
       await axios.post(
         `${API_BASE_URL}/cart/merge`,
         { items },
         { withCredentials: true }
       );
-
-      // Clear guest cart after successful merge
       localStorage.removeItem("guestCart");
-    } catch (error) {
-      console.error("Failed to merge cart:", error);
+    } catch {
+      toast.error("Lỗi! Không thể hợp nhất giỏ hàng.");
     }
   }
 
-  // Get cart count
+  // === Cart Count ===
   async getCartCount(): Promise<number> {
     const cart = await this.getCart();
-    return cart.reduce((total, item) => total + item.quantity, 0);
+    return cart.reduce((total, i) => total + i.quantity, 0);
   }
 }
 

@@ -2,30 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, Edit, Upload, X, Trash2 } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, X, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';
 import { useAppSelector } from '../hooks';
+import { productApi } from '../utils/api';
+import type { ProductDetail } from '../types/types';
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  images: string[];
-  rating: number;
-  reviewCount: number;
-  category: string;
-  brand?: string;
-  brandId?: string;
-  inStock: boolean;
-  stock: number;
-  description: string;
-  features: string[];
-  specifications: { [key: string]: string };
-}
 
 interface Review {
   id: string;
@@ -43,25 +27,12 @@ interface Review {
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<ProductDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    price: '',
-    originalPrice: '',
-    category: '',
-    brand: '',
-    inStock: true,
-    stock: '',
-    description: '',
-    image: ''
-  });
-  const [editImagePreviews, setEditImagePreviews] = useState<string[]>([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [newReview, setNewReview] = useState({
     rating: 5,
@@ -72,283 +43,137 @@ const ProductDetail: React.FC = () => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
 
-  // Mock product data
-  useEffect(() => {
-    // Mock products database
-    const mockProducts: { [key: string]: Product } = {
-      '1': {
-        id: '1',
-        name: 'Camera IP Wifi 4K Ultra HD',
-        price: 2500000,
-        originalPrice: 3000000,
-        image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.8,
-        reviewCount: 124,
-        category: 'Camera An Ninh',
-        brand: 'Hikvision',
-        brandId: '1',
-        inStock: true,
-        stock: 25,
-        description: 'Camera IP Wifi 4K Ultra HD với độ phân giải cao, hỗ trợ kết nối không dây và xem trực tiếp qua ứng dụng di động. Thiết kế chống nước IP67, phù hợp cho cả trong nhà và ngoài trời.',
-        features: [
-          'Độ phân giải 4K Ultra HD',
-          'Kết nối Wifi ổn định',
-          'Chống nước IP67',
-          'Xem trực tiếp qua app',
-          'Báo động thông minh',
-          'Lưu trữ đám mây'
-        ],
-        specifications: {
-          'Độ phân giải': '4K Ultra HD (3840x2160)',
-          'Góc nhìn': '360°',
-          'Kết nối': 'WiFi 2.4GHz/5GHz',
-          'Chống nước': 'IP67',
-          'Bộ nhớ': 'MicroSD lên đến 256GB',
-          'Pin': '5000mAh (tùy chọn)',
-          'Kích thước': '120x80x60mm',
-          'Trọng lượng': '350g'
-        }
-      },
-      '2': {
-        id: '2',
-        name: 'Khóa Cửa Thông Minh Vân Tay',
-        price: 4200000,
-        image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1586953208448-b95a79798f07?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.9,
-        reviewCount: 89,
-        category: 'Kiểm Soát Ra Vào',
-        brand: 'Xiaomi',
-        brandId: '3',
-        inStock: true,
-        stock: 15,
-        description: 'Khóa cửa thông minh với cảm biến vân tay tiên tiến, hỗ trợ mở khóa bằng vân tay, mật khẩu, thẻ từ và app điện thoại. Thiết kế sang trọng, bảo mật cao.',
-        features: [
-          'Cảm biến vân tay chính xác',
-          'Mở khóa đa phương thức',
-          'Kết nối Bluetooth & WiFi',
-          'Pin sử dụng 12 tháng',
-          'Cảnh báo chống trộm',
-          'Chống nước IP65'
-        ],
-        specifications: {
-          'Loại khóa': 'Khóa vân tay điện tử',
-          'Phương thức mở': 'Vân tay, Mật khẩu, Thẻ từ, App',
-          'Dung lượng vân tay': 'Lên đến 100 vân tay',
-          'Kết nối': 'Bluetooth 5.0 & WiFi',
-          'Pin': 'Pin AA x 8 (12 tháng)',
-          'Chống nước': 'IP65',
-          'Kích thước': '340x75x30mm',
-          'Trọng lượng': '2.8kg'
-        }
-      },
-      '3': {
-        id: '3',
-        name: 'Hệ Thống Báo Động Không Dây',
-        price: 1800000,
-        originalPrice: 2200000,
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.7,
-        reviewCount: 156,
-        category: 'Hệ Thống Báo Động',
-        brand: 'Dahua',
-        brandId: '2',
-        inStock: true,
-        stock: 30,
-        description: 'Hệ thống báo động không dây thông minh với cảm biến chuyển động, cửa ra vào và remote điều khiển từ xa. Dễ dàng lắp đặt và sử dụng.',
-        features: [
-          'Cảm biến chuyển động PIR',
-          'Cảm biến cửa từ tính',
-          'Remote điều khiển từ xa',
-          'Còi báo động 120dB',
-          'Kết nối WiFi & GSM',
-          'Pin sạc lithium'
-        ],
-        specifications: {
-          'Loại hệ thống': 'Báo động không dây',
-          'Tần số': '433MHz',
-          'Còi báo động': '120dB',
-          'Kết nối': 'WiFi & GSM',
-          'Số thiết bị': 'Lên đến 100 cảm biến',
-          'Pin': 'Lithium 2000mAh',
-          'Kích thước': '200x150x45mm',
-          'Trọng lượng': '500g'
-        }
-      },
-      '4': {
-        id: '4',
-        name: 'Camera Ngoài Trời Chống Nước IP67',
-        price: 3200000,
-        image: 'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.6,
-        reviewCount: 203,
-        category: 'Camera An Ninh',
-        brand: 'Hikvision',
-        brandId: '1',
-        inStock: false,
-        stock: 0,
-        description: 'Camera ngoài trời chống nước chuẩn IP67, tầm nhìn ban đêm 30m, hỗ trợ ghi hình 2K HD. Phù hợp cho giám sát ngoài trời trong mọi điều kiện thời tiết.',
-        features: [
-          'Chống nước IP67',
-          'Tầm nhìn ban đêm 30m',
-          'Độ phân giải 2K HD',
-          'Phát hiện chuyển động AI',
-          'Lưu trữ cloud & local',
-          'Chống bụi & chống va đập'
-        ],
-        specifications: {
-          'Độ phân giải': '2K HD (2304x1296)',
-          'Góc nhìn': '110°',
-          'Tầm nhìn ban đêm': '30m',
-          'Chống nước': 'IP67',
-          'Kết nối': 'WiFi & Ethernet',
-          'Bộ nhớ': 'MicroSD 128GB',
-          'Kích thước': '180x90x90mm',
-          'Trọng lượng': '650g'
-        }
-      },
-      '5': {
-        id: '5',
-        name: 'Chuông Cửa Thông Minh Video',
-        price: 1500000,
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1586953208448-b95a79798f07?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.5,
-        reviewCount: 78,
-        category: 'Thiết Bị Thông Minh',
-        brand: 'Xiaomi',
-        brandId: '3',
-        inStock: true,
-        stock: 20,
-        description: 'Chuông cửa video thông minh với camera HD, đàm thoại 2 chiều, phát hiện chuyển động và thông báo real-time qua app điện thoại.',
-        features: [
-          'Camera HD 1080p',
-          'Đàm thoại 2 chiều',
-          'Phát hiện chuyển động',
-          'Thông báo qua app',
-          'Tầm nhìn ban đêm',
-          'Pin sạc lâu dài'
-        ],
-        specifications: {
-          'Độ phân giải': '1080p Full HD',
-          'Góc nhìn': '160°',
-          'Kết nối': 'WiFi 2.4GHz',
-          'Pin': 'Lithium 5000mAh',
-          'Thời gian pin': '6 tháng',
-          'Chống nước': 'IP54',
-          'Kích thước': '130x45x25mm',
-          'Trọng lượng': '180g'
-        }
-      },
-      '6': {
-        id: '6',
-        name: 'Bộ Kit Camera 8 Kênh NVR',
-        price: 8500000,
-        originalPrice: 10000000,
-        image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-        ],
-        rating: 4.8,
-        reviewCount: 45,
-        category: 'Camera An Ninh',
-        brand: 'Dahua',
-        brandId: '2',
-        inStock: true,
-        stock: 8,
-        description: 'Bộ kit camera giám sát 8 kênh NVR hoàn chỉnh, bao gồm đầu ghi 8 kênh, 8 camera IP 2MP và phụ kiện lắp đặt. Giải pháp hoàn hảo cho nhà xưởng, cửa hàng.',
-        features: [
-          'Đầu ghi NVR 8 kênh',
-          '8 camera IP 2MP',
-          'HDD 2TB tích hợp',
-          'Xem từ xa qua app',
-          'Ghi hình 24/7',
-          'Phụ kiện lắp đặt đầy đủ'
-        ],
-        specifications: {
-          'Số kênh': '8 kênh',
-          'Độ phân giải camera': '2MP (1920x1080)',
-          'HDD': '2TB',
-          'Kết nối': 'Ethernet PoE',
-          'Xem từ xa': 'App iOS & Android',
-          'Nguồn': 'AC 220V',
-          'Kích thước NVR': '380x320x52mm',
-          'Trọng lượng': '15kg (full bộ)'
-        }
+  const fetchProductDetails = async (productId: string) => {
+    try {
+      setLoading(true);
+      const response = await productApi.getById(productId);
+
+      const baseProduct = {
+        ...response,
+        features: [] as string[],
+        specifications: {} as Record<string, string>,
+      };
+
+      switch (response.category?.id) {
+        case 1:
+          baseProduct.features = [
+            "Ghi hình độ phân giải cao (2K/4K) với góc quan sát rộng",
+            "Tầm nhìn ban đêm hồng ngoại lên đến 30 mét",
+            "Phát hiện chuyển động AI và gửi cảnh báo tức thì qua điện thoại",
+            "Kết nối WiFi ổn định, hỗ trợ Ethernet (LAN)",
+            "Lưu trữ linh hoạt: thẻ nhớ microSD hoặc Cloud",
+            "Thiết kế chống nước, chống bụi chuẩn IP67"
+          ];
+          baseProduct.specifications = {
+            "Độ phân giải": "2K / 4K Ultra HD (tuỳ mẫu)",
+            "Góc nhìn": "110° - 130°",
+            "Tầm nhìn ban đêm": "Tối đa 30m (hồng ngoại IR)",
+            "Kết nối": "WiFi 2.4GHz / Ethernet RJ45",
+            "Nguồn cấp": "DC 12V / PoE",
+            "Chống nước": "Chuẩn IP67",
+            "Lưu trữ": "Thẻ nhớ microSD (tối đa 256GB) / Cloud",
+            "Chất liệu": "Hợp kim nhôm, chống rỉ sét"
+          };
+          break;
+
+        case 2:
+          baseProduct.features = [
+            "Phát hiện chuyển động, cửa mở hoặc rung chấn bất thường",
+            "Còi hú công suất lớn, âm lượng trên 120dB",
+            "Kết nối không dây giữa các cảm biến với trung tâm báo động",
+            "Hỗ trợ thông báo qua ứng dụng điện thoại",
+            "Dễ dàng mở rộng thêm cảm biến và remote điều khiển"
+          ];
+          baseProduct.specifications = {
+            "Loại thiết bị": "Báo động không dây / có dây",
+            "Tần số hoạt động": "433MHz / WiFi 2.4GHz",
+            "Còi hú": "120dB, âm lượng lớn",
+            "Hỗ trợ cảm biến": "Tối đa 100 thiết bị",
+            "Nguồn điện": "Adapter 12V DC hoặc pin sạc",
+            "Phạm vi kết nối": "Tối đa 100 mét (trong nhà)"
+          };
+          break;
+
+        case 3:
+          baseProduct.features = [
+            "Mở khóa bằng vân tay, mã số, thẻ từ hoặc ứng dụng di động",
+            "Cảm biến vân tay quang học độ chính xác cao",
+            "Tự động khóa khi đóng cửa hoặc sau thời gian cài đặt",
+            "Cảnh báo khi nhập sai mã, phá khóa hoặc pin yếu",
+            "Thiết kế hợp kim sang trọng, phù hợp cửa gỗ và cửa thép"
+          ];
+          baseProduct.specifications = {
+            "Phương thức mở": "Vân tay / Mã số / Thẻ từ / App điện thoại",
+            "Kết nối": "Bluetooth 5.0 / WiFi (tuỳ mẫu)",
+            "Chất liệu": "Hợp kim nhôm cao cấp, chống gỉ sét",
+            "Nguồn điện": "4-8 viên pin AA",
+            "Tuổi thọ pin": "6–12 tháng tuỳ tần suất sử dụng",
+            "Độ dày cửa phù hợp": "35mm – 100mm"
+          };
+          break;
+
+        case 4:
+          baseProduct.features = [
+            "Bộ mở rộng sóng WiFi mạnh mẽ, giảm điểm chết tín hiệu",
+            "Hỗ trợ băng tần kép 2.4GHz và 5GHz tốc độ cao",
+            "Cài đặt nhanh chóng qua trình duyệt hoặc ứng dụng di động",
+            "Tương thích với hầu hết router và thiết bị mạng phổ biến",
+            "Thiết kế nhỏ gọn, tiết kiệm điện năng"
+          ];
+          baseProduct.specifications = {
+            "Chuẩn WiFi": "IEEE 802.11ac/b/g/n",
+            "Băng tần": "2.4GHz & 5GHz",
+            "Tốc độ truyền": "Lên đến 1200Mbps",
+            "Cổng LAN": "1x RJ45 10/100Mbps",
+            "Nguồn cấp": "AC 110–240V",
+            "Vùng phủ sóng": "Tối đa 100–150m²"
+          };
+          break;
+
+        case 5:
+          baseProduct.features = [
+            "Phụ kiện chính hãng, tương thích với nhiều thiết bị an ninh",
+            "Cung cấp nguồn ổn định, giúp thiết bị hoạt động bền bỉ",
+            "Chống quá tải, chống cháy nổ, an toàn tuyệt đối",
+            "Thiết kế nhỏ gọn, dễ dàng lắp đặt và thay thế"
+          ];
+          baseProduct.specifications = {
+            "Nguồn điện vào": "AC 100–240V / 50–60Hz",
+            "Nguồn điện ra": "DC 12V – 2A",
+            "Chiều dài dây": "1.2 mét",
+            "Chất liệu": "Nhựa ABS chống cháy",
+            "Trọng lượng": "Khoảng 150g",
+            "Phù hợp với": "Camera, đầu ghi, router, bộ báo động"
+          };
+          break;
+
+        default:
+          baseProduct.features = [
+            "Sản phẩm chất lượng cao, dễ dàng sử dụng",
+            "Thiết kế hiện đại, phù hợp mọi không gian",
+            "Đáp ứng tiêu chuẩn an ninh quốc tế"
+          ];
+          baseProduct.specifications = {
+            "Bảo hành": "12 tháng chính hãng",
+            "Giao hàng": "Toàn quốc 24-48h",
+            "Đổi trả": "Miễn phí trong 30 ngày đầu"
+          };
+          break;
       }
-    };
 
-    const mockProduct = mockProducts[id || '1'] || mockProducts['1'];
-
-    const mockReviews: Review[] = [
-      {
-        id: '1',
-        userName: 'Nguyễn Văn A',
-        userId: 'user1',
-        rating: 5,
-        comment: 'Camera rất chất lượng, hình ảnh rõ nét. Dễ dàng cài đặt và sử dụng. Rất hài lòng với sản phẩm.',
-        date: '2025-01-10',
-        verified: true,
-        status: 'APPROVED',
-        productId: id || '1',
-        orderItemId: 'OI001'
-      },
-      {
-        id: '2',
-        userName: 'Trần Thị B',
-        userId: 'user2',
-        rating: 4,
-        comment: 'Sản phẩm tốt, giao hàng nhanh. Chỉ có điều app đôi lúc lag một chút nhưng vẫn chấp nhận được.',
-        date: '2025-01-08',
-        verified: true,
-        status: 'APPROVED',
-        productId: id || '1',
-        orderItemId: 'OI002'
-      },
-      {
-        id: '3',
-        userName: 'Lê Văn C',
-        userId: 'user3',
-        rating: 5,
-        comment: 'Đã mua 2 cái cho nhà và công ty. Hoạt động ổn định, bảo mật tốt. Giá cả hợp lý.',
-        date: '2025-01-05',
-        verified: true,
-        status: 'PENDING',
-        productId: id || '1',
-        orderItemId: 'OI003'
-      }
-    ];
-
-    setTimeout(() => {
-      setProduct(mockProduct);
-      setReviews(mockReviews);
+      setProduct(baseProduct);
+    } catch (error) {
+      console.error("Error fetching product details:", error);
+      toast.error("Không thể tải thông tin sản phẩm.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchProductDetails(id);
+    }
   }, [id]);
 
   const formatPrice = (price: number) => {
@@ -360,7 +185,7 @@ const ProductDetail: React.FC = () => {
 
   const handleQuantityChange = (change: number) => {
     const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= (product?.stock || 1)) {
+    if (newQuantity >= 1 && newQuantity <= product.availableStock) {
       setQuantity(newQuantity);
     }
   };
@@ -369,14 +194,11 @@ const ProductDetail: React.FC = () => {
     if (!product) return;
     const success = await cartService.addToCart(product, quantity);
     if (success) {
-      toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
       window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      toast.error('Thêm vào giỏ hàng thất bại. Vui lòng thử lại.');
     }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (userRole === 'guest') {
       toast.info('Vui lòng đăng nhập để mua hàng!');
       navigate('/login');
@@ -385,88 +207,12 @@ const ProductDetail: React.FC = () => {
 
     if (!product) return;
 
-    // Mock buy now - in real app, redirect to checkout
-    console.log(`Buy now: ${quantity} x ${product.name}`);
-    toast.success('Đang chuyển đến trang thanh toán...');
+    navigate('/checkout', { state: { product, quantity } });
   };
 
   const handleWishlist = () => {
     setIsWishlisted(!isWishlisted);
     toast.success(isWishlisted ? 'Đã xóa khỏi danh sách yêu thích' : 'Đã thêm vào danh sách yêu thích');
-  };
-
-  const handleEditProduct = () => {
-    if (!product) return;
-    setEditFormData({
-      name: product.name,
-      price: product.price.toString(),
-      originalPrice: product.originalPrice?.toString() || '',
-      category: product.category,
-      brand: product.brand || '',
-      inStock: product.inStock,
-      stock: product.stock.toString(),
-      description: product.description,
-      image: product.image
-    });
-    setEditImagePreviews(product.images || [product.image]);
-    setIsEditModalOpen(true);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditImagePreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setEditImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSaveEdit = () => {
-    if (!product) return;
-    
-    // Validate form
-    if (!editFormData.name || !editFormData.price || !editFormData.category) {
-      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc!');
-      return;
-    }
-
-    if (editImagePreviews.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một ảnh sản phẩm!');
-      return;
-    }
-
-    // Update product with new data
-    const updatedProduct: Product = {
-      ...product,
-      name: editFormData.name,
-      price: parseFloat(editFormData.price),
-      originalPrice: editFormData.originalPrice ? parseFloat(editFormData.originalPrice) : undefined,
-      category: editFormData.category,
-      brand: editFormData.brand || undefined,
-      inStock: editFormData.inStock,
-      stock: parseInt(editFormData.stock),
-      description: editFormData.description,
-      images: editImagePreviews,
-      image: editImagePreviews[0] // Set first image as main image
-    };
-
-    setProduct(updatedProduct);
-    
-    // In a real app, this would make an API call
-    toast.success('Đã cập nhật sản phẩm thành công!');
-    setIsEditModalOpen(false);
-  };
-
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
   };
 
   const handleOpenReviewModal = () => {
@@ -512,31 +258,12 @@ const ProductDetail: React.FC = () => {
     handleCloseReviewModal();
   };
 
-  const handleApproveReview = (reviewId: string) => {
-    setReviews(reviews.map(r => 
-      r.id === reviewId ? { ...r, status: 'APPROVED' as const } : r
-    ));
-    toast.success('Đã phê duyệt đánh giá!');
-  };
-
-  const handleRejectReview = (reviewId: string) => {
-    setReviews(reviews.map(r => 
-      r.id === reviewId ? { ...r, status: 'REJECTED' as const } : r
-    ));
-    toast.success('Đã từ chối đánh giá!');
-  };
-
-  const handleDeleteReview = (reviewId: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) {
-      setReviews(reviews.filter(r => r.id !== reviewId));
-      toast.success('Đã xóa đánh giá thành công!');
-    }
-  };
-
   // Filter reviews by rating
-  const filteredReviews = filterRating 
-    ? reviews.filter(r => r.rating === filterRating && (userRole === 'admin' ? true : r.status === 'APPROVED'))
-    : reviews.filter(r => userRole === 'admin' ? true : r.status === 'APPROVED');
+  const filteredReviews = reviews.filter(r => {
+    if (filterRating && r.rating !== filterRating) return false;
+    if (userRole !== 'admin' && r.status !== 'APPROVED') return false;
+    return true;
+  });
 
   if (loading) {
     return (
@@ -617,13 +344,13 @@ const ProductDetail: React.FC = () => {
           >
             <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
               <img
-                src={product.images[selectedImage]}
+                src={product.mediaAssets[selectedImage]?.url || product.thumbnailUrl}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex space-x-4">
-              {product.images.map((image, index) => (
+              {product.mediaAssets?.length ? (product.mediaAssets.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
@@ -632,12 +359,20 @@ const ProductDetail: React.FC = () => {
                   }`}
                 >
                   <img
-                    src={image}
+                    src={image?.url || product.thumbnailUrl}
                     alt={`${product.name} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                 </button>
-              ))}
+              ))) : (
+                <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200">
+                  <img
+                    src={product.thumbnailUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -651,23 +386,14 @@ const ProductDetail: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-cyan-500 font-medium uppercase tracking-wide">
-                    {product.category}
+                    {product.category.name}
                   </span>
                   {product.brand && (
                     <span className="text-sm text-purple-600 font-semibold bg-purple-50 px-3 py-1 rounded-full">
-                      {product.brand}
+                      {product.brand.name}
                     </span>
                   )}
                 </div>
-                {userRole === 'admin' && (
-                  <button
-                    onClick={handleEditProduct}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Chỉnh sửa
-                  </button>
-                )}
               </div>
               <h1 className="text-3xl font-bold text-zinc-800 mt-2">{product.name}</h1>
               
@@ -692,17 +418,17 @@ const ProductDetail: React.FC = () => {
 
             <div className="flex items-center space-x-4">
               <span className="text-3xl font-bold text-purple-600">
-                {formatPrice(product.price)}
+                {formatPrice(product.listedPrice)}
               </span>
-              {product.originalPrice && product.originalPrice > product.price && (
-                <span className="text-xl text-gray-500 line-through">
-                  {formatPrice(product.originalPrice)}
-                </span>
-              )}
-              {product.originalPrice && product.originalPrice > product.price && (
-                <span className="bg-pink-100 text-pink-600 px-2 py-1 rounded text-sm font-medium">
-                  -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                </span>
+              {product.originalPrice && product.originalPrice > product.listedPrice && (
+                <>
+                  <span className="text-xl text-gray-500 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="bg-pink-100 text-pink-600 px-2 py-1 rounded text-sm font-medium">
+                    -{Math.round(((product.originalPrice - product.listedPrice) / product.originalPrice) * 100)}%
+                  </span>
+                </>
               )}
             </div>
 
@@ -712,11 +438,11 @@ const ProductDetail: React.FC = () => {
                 {product.inStock ? 'Còn hàng' : 'Hết hàng'}
               </span>
               {product.inStock && (
-                <span className="text-gray-600">Còn {product.stock} sản phẩm</span>
+                <span className="text-gray-600">Còn {product.availableStock} sản phẩm</span>
               )}
             </div>
 
-            <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            <p className="text-gray-700 leading-relaxed">{product.longDesc}</p>
 
             {/* Quantity Selector */}
             <div className="flex items-center space-x-4">
@@ -733,7 +459,7 @@ const ProductDetail: React.FC = () => {
                 <button
                   onClick={() => handleQuantityChange(1)}
                   className="p-2 hover:bg-gray-50 disabled:opacity-50"
-                  disabled={quantity >= product.stock}
+                  disabled={quantity >= product.availableStock}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -945,38 +671,7 @@ const ProductDetail: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Admin actions */}
-                    {userRole === 'admin' && (
-                      <div className="flex items-center gap-2">
-                        {review.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => handleApproveReview(review.id)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Phê duyệt"
-                            >
-                              <CheckCircle className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleRejectReview(review.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Từ chối"
-                            >
-                              <X className="h-5 w-5" />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleDeleteReview(review.id)}
-                          className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    )}
+                    </div>                  
                   </div>
                   <p className="text-gray-700 leading-relaxed">{review.comment}</p>
                 </div>
@@ -1070,192 +765,6 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Edit Product Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Chỉnh sửa sản phẩm</h3>
-              <button onClick={handleCloseEditModal} className="text-gray-500 hover:text-gray-700">
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên sản phẩm *
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Nhập tên sản phẩm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giá (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={editFormData.price}
-                  onChange={(e) => setEditFormData({...editFormData, price: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Nhập giá sản phẩm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giá gốc (VND) - Không bắt buộc
-                </label>
-                <input
-                  type="number"
-                  value={editFormData.originalPrice}
-                  onChange={(e) => setEditFormData({...editFormData, originalPrice: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Nhập giá gốc nếu có khuyến mãi"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Danh mục *
-                </label>
-                <select
-                  value={editFormData.category}
-                  onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="">Chọn danh mục</option>
-                  <option value="Camera An Ninh">Camera An Ninh</option>
-                  <option value="Khóa Thông Minh">Khóa Thông Minh</option>
-                  <option value="Báo Động">Báo Động</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thương hiệu
-                </label>
-                <select
-                  value={editFormData.brand}
-                  onChange={(e) => setEditFormData({...editFormData, brand: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="">Chọn thương hiệu</option>
-                  <option value="Hikvision">Hikvision</option>
-                  <option value="Dahua">Dahua</option>
-                  <option value="Xiaomi">Xiaomi</option>
-                  <option value="Khác">Khác</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tồn kho
-                </label>
-                <input
-                  type="number"
-                  value={editFormData.stock}
-                  onChange={(e) => setEditFormData({...editFormData, stock: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Nhập số lượng tồn kho"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hình ảnh sản phẩm
-                </label>
-                
-                {/* Upload button */}
-                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Chọn ảnh từ máy tính</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <p className="text-xs text-gray-500 mt-1">Có thể chọn nhiều ảnh. Hỗ trợ: JPG, PNG, GIF</p>
-                
-                {/* Image previews */}
-                {editImagePreviews.length > 0 && (
-                  <div className="mt-3 grid grid-cols-3 gap-3">
-                    {editImagePreviews.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <img 
-                          src={image} 
-                          alt={`Preview ${index + 1}`}
-                          className="h-24 w-full rounded-lg object-cover border-2 border-gray-300"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mô tả
-                </label>
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Nhập mô tả sản phẩm"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="editInStock"
-                  checked={editFormData.inStock}
-                  onChange={(e) => setEditFormData({...editFormData, inStock: e.target.checked})}
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                />
-                <label htmlFor="editInStock" className="ml-2 text-sm text-gray-700">
-                  Còn hàng
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={handleCloseEditModal}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Cập nhật
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Footer />
     </div>
   );

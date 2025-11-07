@@ -1,5 +1,6 @@
 package secure_shop.backend.dto.product;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.io.Serializable;
@@ -24,15 +25,22 @@ public class ProductDetailsDTO implements Serializable {
     private Boolean active;
 
     private BrandDTO brand;
-    private CategoryDTO category;
+    private CategorySummaryDTO category;
 
     private String shortDesc;
     private String longDesc;
 
     private String thumbnailUrl;
 
+
+    private Double rating;
+    private Integer reviewCount;
+
     private List<MediaAssetDTO> mediaAssets;
-    private InventoryDTO inventory;
+    private Integer availableStock;
+    private Boolean inStock;
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Set<ReviewDTO> reviews;
 
     // Timestamps for tracking

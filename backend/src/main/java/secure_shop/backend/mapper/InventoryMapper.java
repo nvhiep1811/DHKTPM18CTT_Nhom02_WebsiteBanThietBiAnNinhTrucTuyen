@@ -3,7 +3,6 @@ package secure_shop.backend.mapper;
 import org.springframework.stereotype.Component;
 import secure_shop.backend.dto.product.InventoryDTO;
 import secure_shop.backend.entities.Inventory;
-import secure_shop.backend.entities.Product;
 
 @Component
 public class InventoryMapper {
@@ -12,14 +11,9 @@ public class InventoryMapper {
         if (entity == null) return null;
 
         InventoryDTO dto = new InventoryDTO();
-        dto.setId(entity.getId());
         dto.setOnHand(entity.getOnHand());
         dto.setReserved(entity.getReserved());
-
-        if (entity.getProduct() != null) {
-            dto.setProductId(entity.getProduct().getId());
-            dto.setProductName(entity.getProduct().getName());
-        }
+        dto.setInStock(entity.getOnHand() - entity.getReserved() > 0);
 
         return dto;
     }
@@ -28,15 +22,8 @@ public class InventoryMapper {
         if (dto == null) return null;
 
         Inventory entity = new Inventory();
-        entity.setId(dto.getId());
         entity.setOnHand(dto.getOnHand());
         entity.setReserved(dto.getReserved());
-
-        if (dto.getProductId() != null) {
-            Product product = new Product();
-            product.setId(dto.getProductId());
-            entity.setProduct(product);
-        }
 
         return entity;
     }

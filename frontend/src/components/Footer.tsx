@@ -1,8 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Facebook, Twitter, Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import type { CategorySummary } from '../types/types';
+import { categoryApi } from '../utils/api';
 
 const Footer: React.FC = () => {
+  const [categories, setCategories] = useState<CategorySummary[]>([]);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await categoryApi.getAll();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <footer className="bg-zinc-800 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -60,26 +75,13 @@ const Footer: React.FC = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-purple-600">Danh mục sản phẩm</h3>
             <ul className="space-y-2">
-              <li>
-                <Link to="/products?category=camera" className="text-gray-300 hover:text-cyan-500 transition-colors text-sm">
-                  Camera an ninh
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=alarm" className="text-gray-300 hover:text-cyan-500 transition-colors text-sm">
-                  Hệ thống báo động
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=access" className="text-gray-300 hover:text-cyan-500 transition-colors text-sm">
-                  Kiểm soát ra vào
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=smart" className="text-gray-300 hover:text-cyan-500 transition-colors text-sm">
-                  Thiết bị thông minh
-                </Link>
-              </li>
+              {categories.map((category) => (
+                <li key={category.id}>
+                  <Link to={`/products?category=${category.id}`} className="text-gray-300 hover:text-cyan-500 transition-colors text-sm">
+                    {category.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
