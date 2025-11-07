@@ -15,6 +15,8 @@ import Register from "../pages/Register";
 import VerifyEmail from "../pages/VerifyEmail";
 import Terms from '../pages/Terms';
 import Privacy from '../pages/Privacy';
+import Checkout from "../pages/Checkout";
+import OrderSuccess from "../pages/OrderSuccess";
 
 export const publicRoutes = {
   path: "/",
@@ -34,6 +36,14 @@ export const publicRoutes = {
     {
       path: "cart",
       element: <Cart />,
+    },
+    {
+      path: "checkout",
+      element: <Checkout />,
+    },
+    {
+      path: "order-success",
+      element: <OrderSuccess />,
     },
 
     // Chỉ cho phép khi chưa login
