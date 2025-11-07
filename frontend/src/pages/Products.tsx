@@ -14,6 +14,11 @@ import Pagination from "../components/Pagination";
 import SkeletonCard from "../components/SkeletonCard";
 
 const Products: React.FC = () => {
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
   const [searchParams, setSearchParams] = useSearchParams();
 
   // === States ===

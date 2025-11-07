@@ -176,6 +176,10 @@ const ProductDetail: React.FC = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import HeroSection from '../components/HeroSection';
@@ -6,6 +7,11 @@ import FeaturedProducts from '../components/FeaturedProducts';
 import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+  
 
   return (
     <div className="min-h-screen bg-white">
