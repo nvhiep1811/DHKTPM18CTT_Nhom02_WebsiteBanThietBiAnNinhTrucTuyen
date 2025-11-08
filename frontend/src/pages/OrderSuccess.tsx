@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, ArrowLeft, ShoppingBag } from "lucide-react";
+import { CheckCircle, ArrowLeft } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Link } from "react-router-dom";

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, X, Trash2 } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';

@@ -6,7 +6,6 @@ import ProductCard from "../components/ProductCard";
 import { Filter, Search, Grid, List } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cartService } from "../utils/cartService";
-import { toast } from "react-toastify";
 import type { Brand, CategorySummary, ProductSummary } from "../types/types";
 import { brandApi, categoryApi, productApi } from "../utils/api";
 import type { ProductQueryParams } from "../types/query";
@@ -62,8 +61,6 @@ const Products: React.FC = () => {
       setProducts(response.content);
       setTotalPages(response.page.totalPages);
       setTotalElements(response.page.totalElements);      
-    } catch (error) {
-      console.error("Error fetching products:", error);
     } finally {
       setLoading(false);
     }

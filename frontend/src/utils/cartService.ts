@@ -1,31 +1,26 @@
-import axios from "axios";
 import { toast } from "react-toastify";
+import axiosInstance from "./axiosConfig";
 
 export interface CartItem {
-  id: string;
+  productId: string;
   name: string;
-  listedPrice: number;
+  price: number;
   thumbnailUrl: string;
   inStock: boolean;
-  availableStock?: number; // tồn kho thực tế
+  availableStock?: number;
   quantity: number;
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:12345/api";
-
 class CartService {
   private isAuthenticated(): boolean {
-    return !!localStorage.getItem("authToken");
+    return !!localStorage.getItem("accessToken");
   }
 
   // === Get Cart ===
   async getCart(): Promise<CartItem[]> {
     if (this.isAuthenticated()) {
       try {
-        const { data } = await axios.get(`${API_BASE_URL}/cart`, {
-          withCredentials: true,
-        });
+        const { data } = await axiosInstance.get<CartItem[]>("/cart");
         return data;
       } catch {
         toast.error("Lỗi! Không thể tải giỏ hàng.");
@@ -56,48 +51,107 @@ class CartService {
   ): Promise<boolean> {
     const maxQty = product.availableStock ?? 99;
 
+    // Kiểm tra sản phẩm có sẵn không
     if (!product.inStock || maxQty <= 0) {
       toast.warning("Sản phẩm hiện không có sẵn.");
       return false;
     }
 
+    // Kiểm tra số lượng yêu cầu
     if (quantity > maxQty) {
       toast.warning(`Chỉ còn ${maxQty} sản phẩm trong kho.`);
       quantity = maxQty;
     }
 
     if (this.isAuthenticated()) {
+      // === USER ĐÃ ĐĂNG NHẬP ===
       try {
-        await axios.post(
-          `${API_BASE_URL}/cart/add`,
-          { productId: product.id, quantity },
-          { withCredentials: true }
-        );
-        toast.success("Đã thêm sản phẩm vào giỏ hàng!");
+        // Lấy cart hiện tại để kiểm tra số lượng đã có
+        const currentCart = await this.getCart();
+        const existing = currentCart.find((i) => i.productId === product.id);
+
+        const currentQty = existing ? existing.quantity : 0;
+        const totalQty = currentQty + quantity;
+
+        // Kiểm tra tổng số lượng sau khi thêm
+        if (totalQty > maxQty) {
+          const canAdd = maxQty - currentQty;
+
+          if (canAdd <= 0) {
+            toast.warning(
+              `Bạn đã có ${currentQty} sản phẩm trong giỏ. Không thể thêm nữa!`
+            );
+            return false;
+          }
+
+          toast.warning(
+            `Chỉ có thể thêm tối đa ${canAdd} sản phẩm nữa. Đã thêm ${canAdd} sản phẩm.`
+          );
+          quantity = canAdd;
+        }
+
+        await axiosInstance.post("/cart/add", {
+          productId: product.id,
+          name: product.name,
+          price: product.listedPrice,
+          thumbnailUrl: product.thumbnailUrl,
+          inStock: product.inStock,
+          availableStock: product.availableStock,
+          quantity: quantity,
+        });
+
+        toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng!`);
         return true;
-      } catch {
-        toast.error("Lỗi! Không thể thêm sản phẩm vào giỏ hàng.");
+      } catch (error: any) {
+        // Xử lý lỗi từ backend
+        const errorMsg =
+          error.response?.data?.message ||
+          "Không thể thêm sản phẩm vào giỏ hàng.";
+        toast.error(errorMsg);
         return false;
       }
     } else {
+      // === GUEST USER ===
       const cart = await this.getCart();
-      const existing = cart.find((i) => i.id === product.id);
+      const existing = cart.find((i) => i.productId === product.id);
 
       if (existing) {
         const newQty = existing.quantity + quantity;
+
+        // Kiểm tra vượt quá tồn kho
         if (newQty > maxQty) {
+          const canAdd = maxQty - existing.quantity;
+
+          if (canAdd <= 0) {
+            toast.warning(
+              `Bạn đã có ${existing.quantity} sản phẩm trong giỏ. Không thể thêm nữa!`
+            );
+            return false;
+          }
+
           existing.quantity = maxQty;
-          toast.info("Đã đạt số lượng tối đa theo hàng tồn kho.");
-          return false;
+          toast.warning(
+            `Chỉ có thể thêm tối đa ${canAdd} sản phẩm nữa. Đã thêm ${canAdd} sản phẩm.`
+          );
+          localStorage.setItem("guestCart", JSON.stringify(cart));
+          return true;
         } else {
           existing.quantity = newQty;
         }
       } else {
-        cart.push({ ...product, quantity: Math.min(quantity, maxQty) });
+        cart.push({
+          productId: product.id,
+          name: product.name,
+          price: product.listedPrice,
+          thumbnailUrl: product.thumbnailUrl,
+          inStock: product.inStock,
+          availableStock: product.availableStock,
+          quantity: Math.min(quantity, maxQty),
+        });
       }
 
       localStorage.setItem("guestCart", JSON.stringify(cart));
-      toast.success("Đã thêm sản phẩm vào giỏ hàng!");
+      toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
       return true;
     }
   }
@@ -105,7 +159,7 @@ class CartService {
   // === Update Quantity ===
   async updateQuantity(productId: string, quantity: number): Promise<boolean> {
     const cart = await this.getCart();
-    const item = cart.find((i) => i.id === productId);
+    const item = cart.find((i) => i.productId === productId);
 
     if (!item) {
       toast.error("Sản phẩm không tồn tại trong giỏ hàng.");
@@ -114,25 +168,29 @@ class CartService {
 
     const maxQty = item.availableStock ?? 99;
 
+    // Kiểm tra vượt quá tồn kho
     if (quantity > maxQty) {
       toast.warning(`Số lượng yêu cầu vượt quá tồn kho (${maxQty}).`);
       quantity = maxQty;
     }
 
+    // Nếu quantity <= 0 thì xóa sản phẩm
     if (quantity <= 0) {
       return this.removeItem(productId);
     }
 
     if (this.isAuthenticated()) {
       try {
-        await axios.put(
-          `${API_BASE_URL}/cart/update`,
-          { productId, quantity },
-          { withCredentials: true }
-        );
+        await axiosInstance.put("/cart/update", {
+          productId,
+          quantity,
+        });
         return true;
-      } catch {
-        toast.error("Lỗi! Không thể cập nhật số lượng sản phẩm.");
+      } catch (error: any) {
+        const errorMsg =
+          error.response?.data?.message ||
+          "Không thể cập nhật số lượng sản phẩm.";
+        toast.error(errorMsg);
         return false;
       }
     } else {
@@ -146,16 +204,15 @@ class CartService {
   async removeItem(productId: string): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
-        await axios.delete(`${API_BASE_URL}/cart/remove/${productId}`, {
-          withCredentials: true,
-        });
+        await axiosInstance.delete(`/cart/remove/${productId}`);
         return true;
       } catch {
+        toast.error("Không thể xóa sản phẩm khỏi giỏ hàng.");
         return false;
       }
     } else {
       const cart = await this.getCart();
-      const filtered = cart.filter((i) => i.id !== productId);
+      const filtered = cart.filter((i) => i.productId !== productId);
       localStorage.setItem("guestCart", JSON.stringify(filtered));
       return true;
     }
@@ -165,9 +222,7 @@ class CartService {
   async clearCart(): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
-        await axios.delete(`${API_BASE_URL}/cart/clear`, {
-          withCredentials: true,
-        });
+        await axiosInstance.delete("/cart/clear");
         return true;
       } catch {
         toast.error("Lỗi! Không thể xóa toàn bộ giỏ hàng.");
@@ -188,12 +243,9 @@ class CartService {
     if (items.length === 0) return;
 
     try {
-      await axios.post(
-        `${API_BASE_URL}/cart/merge`,
-        { items },
-        { withCredentials: true }
-      );
+      await axiosInstance.post("/cart/merge", { items });
       localStorage.removeItem("guestCart");
+      toast.success("Đã hợp nhất giỏ hàng!");
     } catch {
       toast.error("Lỗi! Không thể hợp nhất giỏ hàng.");
     }

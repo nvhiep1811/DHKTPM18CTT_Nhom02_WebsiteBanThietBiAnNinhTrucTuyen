@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import { motion } from 'framer-motion';
 import { cartService } from '../utils/cartService';
-import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import { productApi } from '../utils/api';
 import type { ProductSummary } from '../types/types';

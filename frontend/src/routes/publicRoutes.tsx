@@ -37,14 +37,6 @@ export const publicRoutes = {
       path: "cart",
       element: <Cart />,
     },
-    {
-      path: "checkout",
-      element: <Checkout />,
-    },
-    {
-      path: "order-success",
-      element: <OrderSuccess />,
-    },
 
     // Chỉ cho phép khi chưa login
     {
@@ -89,6 +81,22 @@ export const publicRoutes = {
     },
 
     // Cần login mới truy cập được
+    {
+      path: "checkout",
+      element: (
+        <UserGuard>
+          <Checkout />
+        </UserGuard>
+      ),
+    },
+    {
+      path: "order-success",
+      element: (
+        <UserGuard>
+          <OrderSuccess />
+        </UserGuard>
+      ),
+    },
     {
       path: "profile",
       element: (

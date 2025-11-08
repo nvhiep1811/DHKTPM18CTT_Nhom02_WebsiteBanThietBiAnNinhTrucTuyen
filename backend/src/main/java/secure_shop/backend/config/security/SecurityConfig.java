@@ -150,6 +150,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/warranty-requests/{id}").authenticated()
                         .requestMatchers("/api/warranty-requests/**").hasRole("ADMIN")
 
+                        // Cart
+                        .requestMatchers("/api/cart/**").authenticated()
+
                         // Default: require authentication for everything else
                         .anyRequest().authenticated()
                 )

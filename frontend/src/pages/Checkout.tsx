@@ -13,7 +13,6 @@ import {
   Wallet,
   CheckCircle,
   Edit,
-  AlertCircle,
   Tag,
   Clock,
   Shield,
@@ -22,15 +21,7 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useAppSelector } from '../hooks';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  availableStock: number;
-}
+import { cartService, type CartItem } from '../utils/cartService';
 
 interface ShippingInfo {
   fullName: string;
@@ -77,37 +68,32 @@ const Checkout: React.FC = () => {
       navigate('/login');
       return;
     }
+  }, [isAuthenticated, navigate]);
 
-    if (location.state?.product && location.state?.quantity) {
-      const { product, quantity } = location.state;
-      setCartItems([{
-        id: product.id,
-        name: product.name,
-        price: product.listedPrice,
-        quantity: quantity,
-        image: product.thumbnailUrl,
-        availableStock: product.availableStock
-      }]);
-    } else if (location.state?.cartItems) {
-      setCartItems(location.state.cartItems);
-    } else {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        if (parsedCart.length > 0) {
-          setCartItems(parsedCart);
+  useEffect(() => {
+    const loadCheckoutItems = async () => {
+      if (location.state?.cartItems && Array.isArray(location.state.cartItems)) {
+        setCartItems(location.state.cartItems);
+        return;
+      }
+
+      try {
+        const items = await cartService.getCart();
+        if (items.length > 0) {
+          setCartItems(items);
         } else {
-          toast.error('Giỏ hàng trống!');
+          toast.info('Giỏ hàng trống. Vui lòng chọn sản phẩm để thanh toán.');
           navigate('/cart');
         }
-      } else {
-        toast.error('Không có sản phẩm để thanh toán!');
+      } catch {
+        toast.error('Không thể tải dữ liệu giỏ hàng!');
         navigate('/cart');
       }
-    }
+    };
 
+    loadCheckoutItems();
     window.scrollTo(0, 0);
-  }, [location.state, navigate, isAuthenticated]);
+  }, [location.state, navigate]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -205,8 +191,10 @@ const Checkout: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Giả lập thời gian xử lý (API backend)
       await new Promise(resolve => setTimeout(resolve, 1500));
 
+      // Tạo dữ liệu đơn hàng
       const orderData = {
         orderId: 'ORD' + Date.now(),
         items: cartItems,
@@ -221,13 +209,19 @@ const Checkout: React.FC = () => {
         orderDate: new Date().toISOString()
       };
 
+      // Gửi email xác nhận (mock)
       await sendOrderConfirmationEmail(orderData);
 
-      localStorage.removeItem('cart');
+      // 🧹 Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
+      for (const item of cartItems) {
+        await cartService.removeItem(item.productId);
+      }
+
+      // 🔄 Cập nhật UI
       window.dispatchEvent(new Event('cartUpdated'));
 
+      // ✅ Thông báo & điều hướng
       toast.success('Đặt hàng thành công! Email xác nhận đã được gửi.');
-      
       navigate('/order-success', { state: { orderData } });
     } catch (error) {
       console.error('Error placing order:', error);
@@ -674,9 +668,9 @@ const Checkout: React.FC = () => {
 
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b border-gray-200 pb-3">
+                <div key={item.productId} className="flex items-center justify-between border-b border-gray-200 pb-3">
                   <div className="flex items-center gap-3">
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                    <img src={item.thumbnailUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
                     <div>
                       <p className="font-medium text-gray-900">{item.name}</p>
                       <p className="text-sm text-gray-500">x{item.quantity}</p>
