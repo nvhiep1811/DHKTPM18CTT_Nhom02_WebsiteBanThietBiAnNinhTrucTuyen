@@ -19,7 +19,8 @@ import java.util.*;
                 @Index(name = "idx_products_category", columnList = "category_id"),
                 @Index(name = "idx_products_brand", columnList = "brand_id"),
                 @Index(name = "idx_products_name", columnList = "name"),
-                @Index(name = "idx_products_listed_price", columnList = "listed_price")
+                @Index(name = "idx_products_listed_price", columnList = "listed_price"),
+                @Index(name = "idx_products_price", columnList = "price")
         }
 )
 @SQLDelete(sql = "UPDATE products SET deleted_at = now(), active = false WHERE id = ?")
@@ -62,6 +63,12 @@ public class Product extends BaseEntity {
     @Digits(integer = 10, fraction = 2, message = "Giá niêm yết không hợp lệ (tối đa 10 chữ số, 2 số thập phân)")
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal listedPrice;
+
+    @NotNull(message = "Giá bán không được để trống")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Giá bán phải lớn hơn 0")
+    @Digits(integer = 10, fraction = 2, message = "Giá bán không hợp lệ (tối đa 10 chữ số, 2 số thập phân)")
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
     @NotNull(message = "Trạng thái hoạt động không được để trống")
     @Builder.Default

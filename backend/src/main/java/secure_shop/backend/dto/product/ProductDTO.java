@@ -20,6 +20,7 @@ public class ProductDTO implements Serializable {
     private String sku;
     private String name;
     private BigDecimal listedPrice;
+    private BigDecimal price;
     private Boolean active;
     private String shortDesc;
 

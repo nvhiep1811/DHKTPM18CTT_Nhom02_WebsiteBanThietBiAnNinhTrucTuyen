@@ -26,6 +26,10 @@ public class Shipment {
     @Column(nullable = false)
     private ShipmentStatus status = ShipmentStatus.PENDING;
 
+    @Size(max = 100, message = "Tên đơn vị vận chuyển tối đa 100 ký tự")
+    @Column(length = 100)
+    private String carrier;
+
     @PastOrPresent(message = "Thời gian vận chuyển không thể là tương lai")
     private Instant deliveredAt;
 

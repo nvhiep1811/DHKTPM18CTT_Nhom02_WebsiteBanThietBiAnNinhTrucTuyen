@@ -422,15 +422,15 @@ const ProductDetail: React.FC = () => {
 
             <div className="flex items-center space-x-4">
               <span className="text-3xl font-bold text-purple-600">
-                {formatPrice(product.listedPrice)}
+                {formatPrice(product.price)}
               </span>
-              {product.originalPrice && product.originalPrice > product.listedPrice && (
+              {product.listedPrice && product.listedPrice > product.price && (
                 <>
                   <span className="text-xl text-gray-500 line-through">
-                    {formatPrice(product.originalPrice)}
+                    {formatPrice(product.listedPrice)}
                   </span>
                   <span className="bg-pink-100 text-pink-600 px-2 py-1 rounded text-sm font-medium">
-                    -{Math.round(((product.originalPrice - product.listedPrice) / product.originalPrice) * 100)}%
+                    -{Math.round(((product.listedPrice - product.price) / product.listedPrice) * 100)}%
                   </span>
                 </>
               )}

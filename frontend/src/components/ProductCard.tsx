@@ -118,7 +118,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         {/* Price */}
         <div className="flex items-center justify-between mb-4">
           <span className="text-xl font-bold text-purple-600">
-            {formatPrice(product.listedPrice)}
+            {formatPrice(product.price)}
           </span>
         </div>
 

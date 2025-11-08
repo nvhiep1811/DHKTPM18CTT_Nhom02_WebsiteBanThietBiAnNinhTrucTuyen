@@ -35,6 +35,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             p.sku,
             p.name,
             p.listedPrice,
+            p.price,
             p.thumbnailUrl,
             i.onHand - i.reserved,
             (CASE WHEN i.onHand - i.reserved > 0 THEN true ELSE false END),

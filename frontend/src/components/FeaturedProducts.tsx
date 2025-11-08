@@ -16,7 +16,7 @@ const FeaturedProducts: React.FC = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const data = await productApi.getAll({ page: 0, size: 4, sort: 'listedPrice,desc' });
+        const data = await productApi.getAll({ page: 0, size: 4, sort: 'price,desc' });
         setProducts(data.content);
       } finally {
         setLoading(false);

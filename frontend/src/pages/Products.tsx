@@ -102,10 +102,10 @@ const Products: React.FC = () => {
 
     switch (sortBy) {
       case "price-low":
-        params.sort = "listedPrice,asc";
+        params.sort = "price,asc";
         break;
       case "price-high":
-        params.sort = "listedPrice,desc";
+        params.sort = "price,desc";
         break;
       case "rating":
         params.sort = "rating,desc";

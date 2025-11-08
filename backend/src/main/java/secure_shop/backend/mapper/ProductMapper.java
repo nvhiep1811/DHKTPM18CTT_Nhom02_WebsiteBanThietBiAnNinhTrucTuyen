@@ -42,6 +42,7 @@ public class ProductMapper {
                 .name(p.getName())
                 .shortDesc(p.getShortDesc())
                 .listedPrice(p.getListedPrice())
+                .price(p.getPrice())
                 .active(p.getActive())
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
@@ -71,6 +72,7 @@ public class ProductMapper {
                 .sku(p.getSku())
                 .name(p.getName())
                 .listedPrice(p.getListedPrice())
+                .price(p.getPrice())
                 .thumbnailUrl(p.getThumbnailUrl())
                 .brand(p.getBrand() != null ? brandMapper.toDTO(p.getBrand()) : null)
                 .category(p.getCategory() != null ? categoryMapper.toSummaryDTO(p.getCategory()) : null)
@@ -97,6 +99,7 @@ public class ProductMapper {
                 .sku(p.getSku())
                 .name(p.getName())
                 .listedPrice(p.getListedPrice())
+                .price(p.getPrice())
                 .active(p.getActive())
                 .brand(p.getBrand() != null ? brandMapper.toDTO(p.getBrand()) : null)
                 .category(p.getCategory() != null ? categoryMapper.toSummaryDTO(p.getCategory()) : null)
@@ -136,6 +139,7 @@ public class ProductMapper {
         product.setSku(dto.getSku());
         product.setName(dto.getName());
         product.setListedPrice(dto.getListedPrice());
+        product.setPrice(dto.getPrice());
         product.setActive(dto.getActive());
         product.setShortDesc(dto.getShortDesc());
         product.setLongDesc(dto.getLongDesc());

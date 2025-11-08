@@ -18,6 +18,7 @@ public class ProductSummaryDTO implements Serializable {
     private String sku;
     private String name;
     private BigDecimal listedPrice;
+    private BigDecimal price;
     private String thumbnailUrl;
     private Integer availableStock;
     private Boolean inStock;

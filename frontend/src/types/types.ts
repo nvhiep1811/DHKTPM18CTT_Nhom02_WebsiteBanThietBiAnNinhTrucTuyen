@@ -12,6 +12,7 @@ export interface ProductSummary {
   sku: string;
   name: string;
   listedPrice: number;
+  price: number;
   thumbnailUrl: string;
   inStock: boolean;
   availableStock?: number;
@@ -37,6 +38,7 @@ export interface ProductDetail {
   sku: string;
   name: string;
   listedPrice: number;
+  price: number;
   active: boolean;
   brand: Brand;
   category: CategorySummary;

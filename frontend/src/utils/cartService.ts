@@ -42,7 +42,7 @@ class CartService {
     product: {
       id: string;
       name: string;
-      listedPrice: number;
+      price: number;
       thumbnailUrl: string;
       inStock: boolean;
       availableStock?: number;
@@ -93,7 +93,7 @@ class CartService {
         await axiosInstance.post("/cart/add", {
           productId: product.id,
           name: product.name,
-          price: product.listedPrice,
+          price: product.price,
           thumbnailUrl: product.thumbnailUrl,
           inStock: product.inStock,
           availableStock: product.availableStock,
@@ -142,7 +142,7 @@ class CartService {
         cart.push({
           productId: product.id,
           name: product.name,
-          price: product.listedPrice,
+          price: product.price,
           thumbnailUrl: product.thumbnailUrl,
           inStock: product.inStock,
           availableStock: product.availableStock,
