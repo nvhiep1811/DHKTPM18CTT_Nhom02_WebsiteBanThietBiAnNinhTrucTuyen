@@ -85,4 +85,12 @@ public class InventoryServiceImpl implements InventoryService {
             throw new IllegalStateException("Cannot release more stock than reserved");
         }
     }
+
+    @Transactional
+    public void consumeReservedStock(Long inventoryId, int quantity) {
+        int updated = inventoryRepository.consumeReservedStock(inventoryId, quantity);
+        if (updated == 0) {
+            throw new IllegalStateException("Không thể tiêu reserved stock (không đủ reserved/onHand)");
+        }
+    }
 }

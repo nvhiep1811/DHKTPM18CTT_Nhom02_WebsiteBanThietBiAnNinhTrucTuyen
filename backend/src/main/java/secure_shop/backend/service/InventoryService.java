@@ -18,4 +18,6 @@ public interface InventoryService {
     void reserveStock(Long inventoryId, int quantity);
 
     void releaseStock(Long inventoryId, int quantity);
+
+    void consumeReservedStock(Long inventoryId, int quantity);
 }

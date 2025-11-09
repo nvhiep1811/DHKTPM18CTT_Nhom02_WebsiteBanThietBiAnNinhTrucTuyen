@@ -23,4 +23,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Integer> {
     @Query("UPDATE Inventory i SET i.reserved = i.reserved - :qty " +
             "WHERE i.id = :id AND i.reserved >= :qty")
     int releaseStockAtomic(@Param("id") Long id, @Param("qty") int qty);
+
+    @Modifying
+    @Query("UPDATE Inventory i SET i.onHand = i.onHand - :qty, i.reserved = i.reserved - :qty " +
+            "WHERE i.id = :id AND i.reserved >= :qty AND i.onHand >= :qty")
+    int consumeReservedStock(@Param("id") Long id, @Param("qty") int qty);
 }

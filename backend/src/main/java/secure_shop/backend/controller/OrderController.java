@@ -6,7 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.config.security.CustomUserDetails;
@@ -45,14 +44,10 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody OrderDTO dto,
+    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody secure_shop.backend.dto.order.request.OrderCreateRequest request,
                                                 @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getId();
-        if (dto.getUser() == null) {
-            dto.setUser(new secure_shop.backend.dto.user.UserSummaryDTO());
-        }
-        dto.getUser().setId(userId);
-        return ResponseEntity.ok(orderService.createOrder(dto));
+        return ResponseEntity.ok(orderService.createOrder(request, userId));
     }
 
     @PutMapping("/{id}")
@@ -80,4 +75,3 @@ public class OrderController {
         return ResponseEntity.ok(orderService.cancelOrder(id));
     }
 }
-

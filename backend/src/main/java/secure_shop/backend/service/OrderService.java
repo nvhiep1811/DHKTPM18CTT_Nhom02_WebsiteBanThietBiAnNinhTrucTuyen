@@ -4,12 +4,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
+import secure_shop.backend.dto.order.request.OrderCreateRequest;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface OrderService {
-    OrderDTO createOrder(OrderDTO orderDTO);
+    OrderDTO createOrder(OrderCreateRequest request, UUID userId);
 
     OrderDTO updateOrder(UUID id, OrderDTO orderDTO);
 
@@ -29,4 +30,3 @@ public interface OrderService {
 
     OrderDTO cancelOrder(UUID id);
 }
-
