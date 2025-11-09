@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -77,15 +78,19 @@ public class OrderServiceImpl implements OrderService {
             order.setUser(user);
         }
 
-        // create order items and attach to order
+       // create order items and attach to order
         for (OrderItemRequest itemReq : request.getItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product", itemReq.getProductId()));
 
+            BigDecimal unitPrice = product.getPrice();
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+
             OrderItem item = OrderItem.builder()
                     .product(product)
                     .quantity(itemReq.getQuantity())
-                    .unitPrice(product.getPrice())
+                    .unitPrice(unitPrice)
+                    .lineTotal(lineTotal) // Tính ngay
                     .order(order)
                     .build();
             order.getOrderItems().add(item);
