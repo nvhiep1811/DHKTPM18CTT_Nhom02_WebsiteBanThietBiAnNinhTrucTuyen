@@ -69,4 +69,20 @@ public class InventoryServiceImpl implements InventoryService {
 
         return inventoryMapper.toDTO(inventoryRepository.save(inventory));
     }
+
+    @Transactional
+    public void reserveStock(Long inventoryId, int quantity) {
+        int updated = inventoryRepository.reserveStockAtomic(inventoryId, quantity);
+        if (updated == 0) {
+            throw new IllegalStateException("Không đủ hàng tồn kho để giữ chỗ");
+        }
+    }
+
+    @Transactional
+    public void releaseStock(Long inventoryId, int quantity) {
+        int updated = inventoryRepository.releaseStockAtomic(inventoryId, quantity);
+        if (updated == 0) {
+            throw new IllegalStateException("Cannot release more stock than reserved");
+        }
+    }
 }

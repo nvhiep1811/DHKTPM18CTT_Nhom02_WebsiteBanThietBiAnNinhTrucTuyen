@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
@@ -43,7 +43,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Cacheable(value = "categories:active")
-    @Transactional(readOnly = true)
     public List<CategorySummaryDTO> getAllActive() {
         log.info("Fetching active categories from DB (not cache)");
         return categoryRepository.findAll()
@@ -54,7 +53,6 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public CategoryDTO getById(Long id) {
         Category category = categoryRepository.findById(id);
         if (category == null) {
@@ -65,6 +63,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @CacheEvict(value = "categories:active", allEntries = true)
+    @Transactional
     public CategoryDTO create(CategoryDTO dto) {
         Category category = categoryMapper.toEntity(dto);
         return categoryMapper.toDTO(categoryRepository.save(category));
@@ -72,6 +71,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @CacheEvict(value = "categories:active", allEntries = true)
+    @Transactional
     public CategoryDTO update(Long id, CategoryDTO dto) {
         Category category = categoryRepository.findById(id);
 
@@ -87,6 +87,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @CacheEvict(value = "categories:active", allEntries = true)
+    @Transactional
     public void delete(Long id) {
         categoryRepository.deleteById(id);
     }

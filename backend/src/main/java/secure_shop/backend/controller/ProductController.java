@@ -1,5 +1,6 @@
 package secure_shop.backend.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,14 +47,14 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDetailsDTO dto) {
+    public ResponseEntity<ProductDTO> createProduct(@Valid @RequestBody ProductDetailsDTO dto) {
         ProductDTO createdProduct = productService.createProduct(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductDTO> updateProduct(@PathVariable UUID id, @RequestBody ProductDetailsDTO dto) {
+    public ResponseEntity<ProductDTO> updateProduct(@PathVariable UUID id,@Valid @RequestBody ProductDetailsDTO dto) {
         return ResponseEntity.ok(productService.updateProduct(id, dto));
     }
 

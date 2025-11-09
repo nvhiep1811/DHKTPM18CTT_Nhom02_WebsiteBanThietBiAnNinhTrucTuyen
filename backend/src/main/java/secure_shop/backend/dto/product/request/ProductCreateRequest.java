@@ -3,7 +3,6 @@ package secure_shop.backend.dto.product.request;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;

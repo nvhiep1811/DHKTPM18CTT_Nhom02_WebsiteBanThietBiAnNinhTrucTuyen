@@ -15,13 +15,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class OrderItemServiceImpl implements OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
     private final OrderItemMapper orderItemMapper;
 
     @Override
+    @Transactional
     public OrderItemDTO createOrderItem(OrderItemDTO orderItemDTO) {
         OrderItem orderItem = orderItemMapper.toEntity(orderItemDTO);
         OrderItem savedOrderItem = orderItemRepository.save(orderItem);
@@ -29,6 +30,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
+    @Transactional
     public OrderItemDTO updateOrderItem(Long id, OrderItemDTO orderItemDTO) {
         OrderItem orderItem = orderItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("OrderItem not found with id: " + id));
@@ -39,6 +41,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
+    @Transactional
     public void deleteOrderItem(Long id) {
         if (!orderItemRepository.existsById(id)) {
             throw new RuntimeException("OrderItem not found with id: " + id);
@@ -47,7 +50,6 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OrderItemDTO getOrderItemById(Long id) {
         OrderItem orderItem = orderItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("OrderItem not found with id: " + id));
@@ -55,7 +57,6 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<OrderItemDTO> getAllOrderItems() {
         return orderItemRepository.findAll().stream()
                 .map(orderItemMapper::toDTO)
@@ -63,7 +64,6 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<OrderItemDTO> getOrderItemsByOrderId(UUID orderId) {
         return orderItemRepository.findAll().stream()
                 .filter(item -> item.getOrder() != null && item.getOrder().getId().equals(orderId))

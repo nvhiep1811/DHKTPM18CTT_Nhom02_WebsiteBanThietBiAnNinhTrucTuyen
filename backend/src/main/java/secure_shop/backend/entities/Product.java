@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,7 +24,7 @@ import java.util.*;
         }
 )
 @SQLDelete(sql = "UPDATE products SET deleted_at = now(), active = false WHERE id = ?")
-@Where(clause = "deleted_at IS NULL")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -135,15 +135,24 @@ public class Product extends BaseEntity {
 
     // ===== Logic cập nhật rating =====
     public void updateRating(double newRating) {
-        if (reviewCount == null) reviewCount = 0;
-        if (rating == null) rating = 0.0;
+        if (newRating < 0.0 || newRating > 5.0) {
+            throw new IllegalArgumentException("Rating must be between 0 and 5");
+        }
 
-        double total = rating * reviewCount;
-        reviewCount++;
-        rating = (total + newRating) / reviewCount;
+        int currentCount = (reviewCount == null) ? 0 : reviewCount;
+        double currentRating = (rating == null) ? 0.0 : rating;
+
+        double total = currentRating * currentCount;
+        currentCount++;
+        rating = (total + newRating) / currentCount;
+        reviewCount = currentCount;
     }
 
     public void removeReview(double removedRating) {
+        if (removedRating < 0.0 || removedRating > 5.0) {
+            throw new IllegalArgumentException("Rating must be between 0 and 5");
+        }
+
         if (reviewCount == null || reviewCount <= 1) {
             rating = 0.0;
             reviewCount = 0;

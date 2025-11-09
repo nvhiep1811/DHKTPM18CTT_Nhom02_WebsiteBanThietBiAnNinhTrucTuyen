@@ -14,4 +14,8 @@ public interface InventoryService {
     InventoryDTO updateStock(UUID productId, int quantityChange);
 
     InventoryDTO createInventory(UUID productId, int onHand);
+
+    void reserveStock(Long inventoryId, int quantity);
+
+    void releaseStock(Long inventoryId, int quantity);
 }

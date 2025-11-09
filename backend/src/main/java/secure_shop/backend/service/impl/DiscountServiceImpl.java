@@ -18,13 +18,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class DiscountServiceImpl implements DiscountService {
 
     private final DiscountRepository discountRepository;
     private final DiscountMapper discountMapper;
 
     @Override
+    @Transactional
     public DiscountDTO createDiscount(DiscountDTO discountDTO) {
         Discount discount = discountMapper.toEntity(discountDTO);
         Discount savedDiscount = discountRepository.save(discount);
@@ -32,6 +33,7 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
+    @Transactional
     public DiscountDTO updateDiscount(UUID id, DiscountDTO discountDTO) {
         Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found with id: " + id));
@@ -42,6 +44,7 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
+    @Transactional
     public void deleteDiscount(UUID id) {
         if (!discountRepository.existsById(id)) {
             throw new RuntimeException("Discount not found with id: " + id);
@@ -50,7 +53,6 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DiscountDTO getDiscountById(UUID id) {
         Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found with id: " + id));
@@ -58,7 +60,6 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DiscountDetailsDTO getDiscountDetailsById(UUID id) {
         Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found with id: " + id));
@@ -66,7 +67,6 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<DiscountDTO> getAllDiscounts() {
         return discountRepository.findAll().stream()
                 .map(discountMapper::toDTO)
@@ -74,14 +74,12 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<DiscountDTO> getDiscountsPage(Pageable pageable) {
         return discountRepository.findAll(pageable)
                 .map(discountMapper::toDTO);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<DiscountDTO> getActiveDiscounts() {
         return discountRepository.findAll().stream()
                 .filter(Discount::getActive)

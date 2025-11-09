@@ -1,5 +1,6 @@
 package secure_shop.backend.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +45,7 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO dto,
+    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody OrderDTO dto,
                                                 @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getId();
         if (dto.getUser() == null) {
@@ -56,7 +57,7 @@ public class OrderController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<OrderDTO> updateOrder(@PathVariable UUID id, @RequestBody OrderDTO dto) {
+    public ResponseEntity<OrderDTO> updateOrder(@PathVariable UUID id, @Valid @RequestBody OrderDTO dto) {
         return ResponseEntity.ok(orderService.updateOrder(id, dto));
     }
 

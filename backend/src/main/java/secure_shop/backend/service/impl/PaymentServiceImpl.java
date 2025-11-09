@@ -20,13 +20,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
 
     @Override
+    @Transactional
     public PaymentDTO createPayment(PaymentDTO paymentDTO) {
         Payment payment = paymentMapper.toEntity(paymentDTO);
         Payment savedPayment = paymentRepository.save(payment);
@@ -34,6 +35,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional
     public PaymentDTO updatePayment(UUID id, PaymentDTO paymentDTO) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", id));
@@ -44,6 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional
     public void deletePayment(UUID id) {
         if (!paymentRepository.existsById(id)) {
             throw new ResourceNotFoundException("Payment", id);
@@ -52,7 +55,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PaymentDTO getPaymentById(UUID id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", id));
@@ -60,7 +62,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<PaymentDTO> getAllPayments() {
         return paymentRepository.findAll().stream()
                 .map(paymentMapper::toDTO)
@@ -68,14 +69,12 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<PaymentDTO> getPaymentsPage(Pageable pageable) {
         return paymentRepository.findAll(pageable)
                 .map(paymentMapper::toDTO);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PaymentDTO getPaymentByOrderId(UUID orderId) {
         Payment payment = paymentRepository.findAll().stream()
                 .filter(p -> p.getOrder() != null && p.getOrder().getId().equals(orderId))

@@ -1,11 +1,10 @@
 package secure_shop.backend.entities;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import secure_shop.backend.enums.ShipmentStatus;
 
-import javax.validation.constraints.*;
 import java.time.Instant;
 
 @Entity

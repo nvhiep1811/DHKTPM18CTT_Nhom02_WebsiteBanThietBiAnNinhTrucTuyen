@@ -51,15 +51,18 @@ public class UserServiceImpl implements UserService {
     public User createUser(User user) {
         // Hash password if it's a plain password (not already hashed)
         String raw = user.getPasswordHash();
-        if ("local".equals(user.getProvider()) && (raw == null || raw.isBlank())) {
-            throw new ValidationException("Mật khẩu không được để trống!");
-        }
-
-        if (raw != null && !raw.isBlank() && !raw.startsWith("$2a$")) {
-            user.setPasswordHash(encoder.encode(raw));
-        } else if (raw == null || raw.isBlank()) {
-            // For OAuth users without password, generate a random secure password
-            user.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
+        if ("local".equals(user.getProvider())) {
+            if (raw == null || raw.isBlank()) {
+                throw new ValidationException("Mật khẩu không được để trống!");
+            }
+            if (!raw.startsWith("$2a$")) {
+                user.setPasswordHash(encoder.encode(raw));
+            }
+        } else {
+            // OAuth users
+            if (raw == null || raw.isBlank()) {
+                user.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
+            }
         }
 
         User savedUser = userRepository.save(user);
