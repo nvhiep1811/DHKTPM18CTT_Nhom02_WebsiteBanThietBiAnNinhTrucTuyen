@@ -162,9 +162,6 @@ const ProductDetail: React.FC = () => {
       }
 
       setProduct(baseProduct);
-    } catch (error) {
-      console.error("Error fetching product details:", error);
-      toast.error("Không thể tải thông tin sản phẩm.");
     } finally {
       setLoading(false);
     }
@@ -188,11 +185,13 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleQuantityChange = (change: number) => {
-    const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= product.availableStock) {
-      setQuantity(newQuantity);
-    }
-  };
+  if (!product) return;
+  
+  const newQuantity = quantity + change;
+  if (newQuantity >= 1 && newQuantity <= product.availableStock) {
+    setQuantity(newQuantity);
+  }
+};
 
   const handleAddToCart = async () => {
     if (!product) return;

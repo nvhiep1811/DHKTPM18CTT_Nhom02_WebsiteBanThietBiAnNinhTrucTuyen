@@ -12,19 +12,14 @@ import {
   UserCircle,
   TrendingUp,
   Clock,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cartService } from "../utils/cartService";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { logout } from "../stores/authSlice";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  category?: string;
-}
+import { productApi } from "../utils/api";
+import type { ProductSummary } from "../types/types";
 
 const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -32,10 +27,13 @@ const Header: React.FC = () => {
   const [cartItemCount, setCartItemCount] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductSummary[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -51,51 +49,18 @@ const Header: React.FC = () => {
     navigate("/");
   };
 
-  // Mock data for search
-  const allProducts: Product[] = [
-    {
-      id: "1",
-      name: "Camera IP Wifi 4K Ultra HD",
-      price: 2500000,
-      category: "Camera",
-      image:
-        "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=80&q=80",
-    },
-    {
-      id: "2",
-      name: "Khóa Cửa Thông Minh Vân Tay",
-      price: 4200000,
-      category: "Khóa cửa",
-      image:
-        "https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=80&q=80",
-    },
-    {
-      id: "3",
-      name: "Hệ Thống Báo Động Không Dây",
-      price: 1800000,
-      category: "Báo động",
-      image:
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=80&q=80",
-    },
-    {
-      id: "4",
-      name: "Camera Ngoài Trời Chống Nước IP67",
-      price: 3200000,
-      category: "Camera",
-      image:
-        "https://images.unsplash.com/photo-1567443024551-6e3b63c8c816?auto=format&fit=crop&w=80&q=80",
-    },
-    {
-      id: "5",
-      name: "Chuông Cửa Thông Minh Video",
-      price: 1500000,
-      category: "Chuông cửa",
-      image:
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=80&q=80",
-    },
-  ];
-
   const popularSearches = ["Camera 4K", "Khóa vân tay", "Báo động", "Chuông cửa"];
+
+  // Detect mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -105,25 +70,50 @@ const Header: React.FC = () => {
     }
   }, []);
 
-  // Search filtering with highlighting
+  // Search filtering with debounce
   useEffect(() => {
     if (searchTerm.trim()) {
-      const results = allProducts.filter((p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSearchResults(results.slice(0, 5));
-    } else {
-      setSearchResults([]);
+      setIsSearching(true);
     }
+
+    const timeoutId = setTimeout(async () => {
+      if (searchTerm.trim()) {
+        try {
+          const results = await productApi.getAll({ keyword: searchTerm });
+          setSearchResults(results.content);
+        } catch {
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
   const toggleSearch = () => {
-    setIsSearchOpen(!isSearchOpen);
-    if (!isSearchOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 100);
+    const newState = !isSearchOpen;
+    setIsSearchOpen(newState);
+    
+    if (newState) {
+      // Use requestAnimationFrame for better timing with animations
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (isMobile) {
+            mobileSearchInputRef.current?.focus();
+          } else {
+            searchInputRef.current?.focus();
+          }
+        }, 50);
+      });
     } else {
       setSearchTerm("");
       setSearchResults([]);
+      setIsSearching(false);
     }
   };
 
@@ -163,11 +153,11 @@ const Header: React.FC = () => {
     localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (searchTerm.trim()) {
       saveRecentSearch(searchTerm);
-      navigate(`/products?search=${encodeURIComponent(searchTerm)}`);
+      navigate(`/products`, { state: { keyword: searchTerm } });
       setIsSearchOpen(false);
       setSearchTerm("");
       setSearchResults([]);
@@ -183,7 +173,11 @@ const Header: React.FC = () => {
 
   const handleQuickSearch = (term: string) => {
     setSearchTerm(term);
-    searchInputRef.current?.focus();
+    if (isMobile) {
+      mobileSearchInputRef.current?.focus();
+    } else {
+      searchInputRef.current?.focus();
+    }
   };
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -198,9 +192,9 @@ const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <Shield className="h-8 w-8 text-purple-600" />
-            <span className="text-xl font-bold text-zinc-800">SecureShop</span>
+          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
+            <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-purple-600" />
+            <span className="text-lg sm:text-xl font-bold text-zinc-800">SecureShop</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -247,7 +241,7 @@ const Header: React.FC = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-10 py-2.5 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                       />
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 h-5 w-5" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 h-5 w-5 pointer-events-none" />
                       <button
                         type="button"
                         onClick={toggleSearch}
@@ -267,7 +261,12 @@ const Header: React.FC = () => {
                           transition={{ duration: 0.2 }}
                           className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-[480px] overflow-y-auto"
                         >
-                          {searchTerm ? (
+                          {isSearching ? (
+                            <div className="px-4 py-8 text-center">
+                              <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-3" />
+                              <p className="text-gray-500 text-sm">Đang tìm kiếm...</p>
+                            </div>
+                          ) : searchTerm ? (
                             // Search Results
                             searchResults.length > 0 ? (
                               <div>
@@ -277,7 +276,7 @@ const Header: React.FC = () => {
                                   </p>
                                 </div>
                                 <div className="py-1">
-                                  {searchResults.map((product, index) => (
+                                  {searchResults.slice(0, 5).map((product, index) => (
                                     <motion.button
                                       key={product.id}
                                       initial={{ opacity: 0, x: -10 }}
@@ -286,19 +285,14 @@ const Header: React.FC = () => {
                                       onClick={() => handleProductClick(product.id)}
                                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors group"
                                     >
-                                      <div className="relative">
+                                      <div className="relative flex-shrink-0">
                                         <img
-                                          src={product.image}
+                                          src={product.thumbnailUrl}
                                           alt={product.name}
                                           className="w-12 h-12 object-cover rounded-lg border border-gray-200 group-hover:border-purple-300 transition-colors"
                                         />
-                                        {product.category && (
-                                          <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
-                                            {product.category}
-                                          </span>
-                                        )}
                                       </div>
-                                      <div className="flex-1 text-left">
+                                      <div className="flex-1 text-left min-w-0">
                                         <p className="text-sm font-medium text-zinc-800 group-hover:text-purple-600 transition-colors line-clamp-1">
                                           {product.name}
                                         </p>
@@ -306,13 +300,13 @@ const Header: React.FC = () => {
                                           {product.price.toLocaleString("vi-VN")} đ
                                         </p>
                                       </div>
-                                      <Search className="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                                      <Search className="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors flex-shrink-0" />
                                     </motion.button>
                                   ))}
                                 </div>
                                 <div className="border-t border-gray-200 p-3">
                                   <button
-                                    onClick={handleSearchSubmit}
+                                    onClick={() => handleSearchSubmit()}
                                     className="w-full text-center text-purple-600 hover:text-purple-700 font-semibold text-sm py-2 hover:bg-purple-50 rounded-lg transition-colors"
                                   >
                                     Xem tất cả kết quả →
@@ -348,10 +342,10 @@ const Header: React.FC = () => {
                                       >
                                         <button
                                           onClick={() => handleQuickSearch(term)}
-                                          className="flex items-center gap-2 text-left flex-grow"
+                                          className="flex items-center gap-2 text-left flex-grow min-w-0"
                                         >
-                                          <Clock className="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors" />
-                                          <span className="text-sm text-gray-700 group-hover:text-purple-600 transition-colors">
+                                          <Clock className="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors flex-shrink-0" />
+                                          <span className="text-sm text-gray-700 group-hover:text-purple-600 transition-colors truncate">
                                             {term}
                                           </span>
                                         </button>
@@ -362,7 +356,7 @@ const Header: React.FC = () => {
                                             setRecentSearches(updated);
                                             localStorage.setItem("recentSearches", JSON.stringify(updated));
                                           }}
-                                          className="text-gray-400 hover:text-red-500 transition-colors"
+                                          className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
                                         >
                                           <X className="h-4 w-4" />
                                         </button>
@@ -386,7 +380,7 @@ const Header: React.FC = () => {
                                       onClick={() => handleQuickSearch(term)}
                                       className="w-full text-left px-4 py-2.5 hover:bg-purple-50 transition-colors flex items-center gap-2 group"
                                     >
-                                      <TrendingUp className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
+                                      <TrendingUp className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors flex-shrink-0" />
                                       <span className="text-sm text-gray-700 group-hover:text-purple-600 transition-colors">
                                         {term}
                                       </span>
@@ -503,14 +497,22 @@ const Header: React.FC = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center space-x-2">
+          <div className="md:hidden flex items-center space-x-1 sm:space-x-2">
+            <button
+              onClick={toggleSearch}
+              className="p-2 text-zinc-800 hover:text-purple-600 transition-colors"
+              aria-label="Search"
+            >
+              <Search className="h-5 w-5" />
+            </button>
             <Link
               to="/cart"
               className="relative p-2 text-zinc-800 hover:text-purple-600 transition-colors"
+              aria-label="Cart"
             >
               <ShoppingCart className="h-5 w-5" />
               {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
                   {cartItemCount}
                 </span>
               )}
@@ -519,12 +521,182 @@ const Header: React.FC = () => {
             <button
               onClick={toggleMobileMenu}
               className="p-2 text-zinc-800 hover:text-purple-600 transition-colors"
+              aria-label="Menu"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Modal */}
+      <AnimatePresence>
+        {isSearchOpen && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            onClick={toggleSearch}
+          >
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              className="bg-white min-h-screen"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3">
+                <form onSubmit={handleSearchSubmit} className="relative">
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 h-5 w-5 pointer-events-none" />
+                  <button
+                    type="button"
+                    onClick={toggleSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </form>
+              </div>
+
+              <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 70px)' }}>
+                {isSearching ? (
+                  <div className="px-4 py-8 text-center">
+                    <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">Đang tìm kiếm...</p>
+                  </div>
+                ) : searchTerm ? (
+                  searchResults.length > 0 ? (
+                    <div>
+                      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                          Kết quả tìm kiếm ({searchResults.length})
+                        </p>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {searchResults.map((product, index) => (
+                          <motion.button
+                            key={product.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => handleProductClick(product.id)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors active:bg-purple-100"
+                          >
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={product.thumbnailUrl}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                              />
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                              <p className="text-sm font-medium text-zinc-800 line-clamp-2">
+                                {product.name}
+                              </p>
+                              <p className="text-sm text-purple-600 font-bold mt-1">
+                                {product.price.toLocaleString("vi-VN")} đ
+                              </p>
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-200 p-4">
+                        <button
+                          onClick={() => handleSearchSubmit()}
+                          className="w-full text-center text-purple-600 hover:text-purple-700 font-semibold text-sm py-3 hover:bg-purple-50 rounded-lg transition-colors active:bg-purple-100"
+                        >
+                          Xem tất cả kết quả →
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-12 text-center">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Search className="h-10 w-10 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 text-base">Không tìm thấy sản phẩm</p>
+                      <p className="text-gray-400 text-sm mt-2">Thử tìm kiếm với từ khóa khác</p>
+                    </div>
+                  )
+                ) : (
+                  <div>
+                    {recentSearches.length > 0 && (
+                      <div className="border-b border-gray-200">
+                        <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Tìm kiếm gần đây
+                          </p>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                          {recentSearches.map((term, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between px-4 py-3 active:bg-gray-50"
+                            >
+                              <button
+                                onClick={() => handleQuickSearch(term)}
+                                className="flex items-center gap-2 text-left flex-grow min-w-0"
+                              >
+                                <Clock className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                                <span className="text-sm text-gray-700 truncate">
+                                  {term}
+                                </span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = recentSearches.filter((_, i) => i !== index);
+                                  setRecentSearches(updated);
+                                  localStorage.setItem("recentSearches", JSON.stringify(updated));
+                                }}
+                                className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 ml-2 p-1"
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="px-4 py-3 bg-gray-50">
+                        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Tìm kiếm phổ biến
+                        </p>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {popularSearches.map((term, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleQuickSearch(term)}
+                            className="w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors active:bg-purple-100 flex items-center gap-2"
+                          >
+                            <TrendingUp className="h-5 w-5 text-purple-400 flex-shrink-0" />
+                            <span className="text-sm text-gray-700">
+                              {term}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Menu */}
       <AnimatePresence>
@@ -535,11 +707,11 @@ const Header: React.FC = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-white border-t border-gray-200 shadow-lg"
           >
-            <div className="flex flex-col px-5 py-4 space-y-2">
+            <div className="flex flex-col px-4 py-3 space-y-1">
               <NavLink
                 to="/"
                 className={({ isActive }) =>
-                  `block w-full px-3 py-2 rounded-md text-base font-medium text-center ${
+                  `block w-full px-3 py-2.5 rounded-md text-base font-medium text-center ${
                     isActive
                       ? "bg-purple-100 text-purple-700"
                       : "text-zinc-700 hover:bg-purple-50 hover:text-purple-600"
@@ -552,7 +724,7 @@ const Header: React.FC = () => {
               <NavLink
                 to="/products"
                 className={({ isActive }) =>
-                  `block w-full px-3 py-2 rounded-md text-base font-medium text-center ${
+                  `block w-full px-3 py-2.5 rounded-md text-base font-medium text-center ${
                     isActive
                       ? "bg-purple-100 text-purple-700"
                       : "text-zinc-700 hover:bg-purple-50 hover:text-purple-600"
@@ -565,7 +737,7 @@ const Header: React.FC = () => {
               <NavLink
                 to="/about"
                 className={({ isActive }) =>
-                  `block w-full px-3 py-2 rounded-md text-base font-medium text-center ${
+                  `block w-full px-3 py-2.5 rounded-md text-base font-medium text-center ${
                     isActive
                       ? "bg-purple-100 text-purple-700"
                       : "text-zinc-700 hover:bg-purple-50 hover:text-purple-600"
@@ -578,7 +750,7 @@ const Header: React.FC = () => {
               <NavLink
                 to="/contact"
                 className={({ isActive }) =>
-                  `block w-full px-3 py-2 rounded-md text-base font-medium text-center ${
+                  `block w-full px-3 py-2.5 rounded-md text-base font-medium text-center ${
                     isActive
                       ? "bg-purple-100 text-purple-700"
                       : "text-zinc-700 hover:bg-purple-50 hover:text-purple-600"
@@ -588,6 +760,81 @@ const Header: React.FC = () => {
               >
                 Liên hệ
               </NavLink>
+              
+              {user?.role?.toLowerCase() === "admin" && (
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    `block w-full px-3 py-2.5 rounded-md text-base font-medium text-center ${
+                      isActive
+                        ? "bg-purple-100 text-purple-700"
+                        : "text-zinc-700 hover:bg-purple-50 hover:text-purple-600"
+                    }`
+                  }
+                  onClick={toggleMobileMenu}
+                >
+                  Quản trị
+                </NavLink>
+              )}
+
+              {/* User Section in Mobile Menu */}
+              <div className="pt-3 mt-3 border-t border-gray-200">
+                {isAuthenticated && user ? (
+                  <>
+                    <div className="flex items-center gap-3 px-3 py-2 mb-2">
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt="User Avatar"
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                          <User className="h-6 w-6 text-purple-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {user.name || user.email}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/profile"
+                      className="flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                      onClick={toggleMobileMenu}
+                    >
+                      <UserCircle className="h-5 w-5 mr-3" />
+                      Thông tin cá nhân
+                    </Link>
+                    <Link
+                      to="/orders"
+                      className="flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                      onClick={toggleMobileMenu}
+                    >
+                      <Package className="h-5 w-5 mr-3" />
+                      Đơn hàng của tôi
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors mt-1"
+                    >
+                      <LogOut className="h-5 w-5 mr-3" />
+                      Đăng xuất
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="flex items-center justify-center space-x-2 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors w-full"
+                    onClick={toggleMobileMenu}
+                  >
+                    <User className="h-5 w-5" />
+                    <span>Đăng nhập</span>
+                  </Link>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

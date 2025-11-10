@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -13,6 +13,8 @@ import Pagination from "../components/Pagination";
 import SkeletonCard from "../components/SkeletonCard";
 
 const Products: React.FC = () => {
+  const { state } = useLocation();
+  const { keyword } = state || {};
 
   useEffect(() => {
       window.scrollTo(0, 0);
@@ -23,7 +25,7 @@ const Products: React.FC = () => {
   // === States ===
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(keyword || "");
   const [selectedCategory, setSelectedCategory] = useState(
     parseInt(searchParams.get("category") || "0")
   );
