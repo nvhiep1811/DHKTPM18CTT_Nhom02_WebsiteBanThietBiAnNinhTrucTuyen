@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import { Filter, Search, Grid, List } from "lucide-react";
+import { Filter, Search, Grid, List, ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cartService } from "../utils/cartService";
 import type { Brand, CategorySummary, ProductSummary } from "../types/types";
@@ -17,27 +17,42 @@ const Products: React.FC = () => {
   const { keyword } = state || {};
 
   useEffect(() => {
-      window.scrollTo(0, 0);
-    }, []);
-  
+    window.scrollTo(0, 0);
+  }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   // === States ===
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(keyword || "");
-  const [selectedCategory, setSelectedCategory] = useState(
-    parseInt(searchParams.get("category") || "0")
-  );
-  const [selectedBrand, setSelectedBrand] = useState<number | null>(
-    parseInt(searchParams.get("brand") || "0")
-  );
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    const param = searchParams.get("category");
+    return param ? parseInt(param) : 0;
+  });
+  const [selectedBrand, setSelectedBrand] = useState<number>(() => {
+    const param = searchParams.get("brand");
+    return param ? parseInt(param) : 0;
+  });
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);  
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loadingFilters, setLoadingFilters] = useState(true);
+
+  // === Price filter states ===
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+  const [tempMinPrice, setTempMinPrice] = useState<string>("");
+  const [tempMaxPrice, setTempMaxPrice] = useState<string>("");
+
+  // === Stock filter state ===
+  const [stockFilter, setStockFilter] = useState<"all" | "inStock" | "outOfStock">("all");
+
+  // === Show all categories/brands ===
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllBrands, setShowAllBrands] = useState(false);
 
   // === Pagination ===
   const [page, setPage] = useState(0);
@@ -46,34 +61,53 @@ const Products: React.FC = () => {
   const [pageSize, setPageSize] = useState(12);
 
   // === Fetch products ===
-  const fetchProducts = async (filters: ProductQueryParams = {}) => {
-    try {
-      setLoading(true);
+  const fetchProducts = useCallback(
+    async (filters: ProductQueryParams = {}, signal?: AbortSignal) => {
+      try {
+        setLoading(true);
 
-      const response = await productApi.getAll({
-        active: filters.active ?? true,
-        categoryId: filters.categoryId,
-        brandId: filters.brandId,
-        keyword: filters.keyword,
-        page: filters.page ?? 0,
-        size: filters.size ?? pageSize,
-        sort: filters.sort ?? "name,asc",
-      });
+        let inStock: boolean | undefined = undefined;
+        if (filters.stockFilter === "inStock") inStock = true;
+        else if (filters.stockFilter === "outOfStock") inStock = false;
 
-      setProducts(response.content);
-      setTotalPages(response.page.totalPages);
-      setTotalElements(response.page.totalElements);      
-    } finally {
-      setLoading(false);
-    }
-  };
+        const response = await productApi.getAll({
+          active: filters.active ?? true,
+          categoryId: filters.categoryId || undefined,
+          brandId: filters.brandId || undefined,
+          keyword: filters.keyword,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          inStock,
+          page: filters.page ?? 0,
+          size: filters.size ?? pageSize,
+          sort: filters.sort ?? "name,asc",
+        });
 
+        if (signal?.aborted) return;
+
+        setProducts(response.content);
+        setTotalPages(response.page.totalPages);
+        setTotalElements(response.page.totalElements);
+      } catch (error: any) {
+        if (error.name === "AbortError" || error.name === "CanceledError") return;
+        console.error("Error fetching products:", error);
+        setProducts([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [pageSize]
+  );
+
+  // === Fetch categories & brands ===
   useEffect(() => {
     const fetchAllFilters = async () => {
       try {
         const [categoriesData, brandsData] = await Promise.all([
           categoryApi.getAll(),
-          brandApi.getAll({ size: 10 }),
+          brandApi.getAll({ size: 100 }),
         ]);
 
         setCategories([{ id: 0, name: "Tất cả" }, ...categoriesData]);
@@ -88,72 +122,104 @@ const Products: React.FC = () => {
     fetchAllFilters();
   }, []);
 
-  // === Load products whenever filters change ===
+  // === Load products (debounce + abort) ===
   useEffect(() => {
-    const params: any = { page };
+    const abortController = new AbortController();
 
-    if (selectedCategory && selectedCategory !== 0) {
-      params.categoryId = selectedCategory;
-    }
-    if (selectedBrand && selectedBrand !== 0) {
-      params.brandId = selectedBrand;
-    }
-    if (searchTerm.trim()) {
-      params.keyword = searchTerm.trim();
-    }
+    const timer = setTimeout(() => {
+      const params: any = { page, stockFilter, minPrice, maxPrice };
 
-    switch (sortBy) {
-      case "price-low":
-        params.sort = "price,asc";
-        break;
-      case "price-high":
-        params.sort = "price,desc";
-        break;
-      case "rating":
-        params.sort = "rating,desc";
-        break;
-      case "name":
-      default:
-        params.sort = "name,asc";
-        break;
+      if (selectedCategory && selectedCategory !== 0) params.categoryId = selectedCategory;
+      if (selectedBrand && selectedBrand !== 0) params.brandId = selectedBrand;
+      if (searchTerm.trim()) params.keyword = searchTerm.trim();
+
+      switch (sortBy) {
+        case "price-low":
+          params.sort = "price,asc";
+          break;
+        case "price-high":
+          params.sort = "price,desc";
+          break;
+        case "rating":
+          params.sort = "rating,desc";
+          break;
+        default:
+          params.sort = "name,asc";
+      }
+
+      fetchProducts(params, abortController.signal);
+    }, searchTerm !== keyword ? 500 : 0);
+
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
+  }, [
+    selectedCategory,
+    selectedBrand,
+    searchTerm,
+    sortBy,
+    page,
+    minPrice,
+    maxPrice,
+    stockFilter,
+    fetchProducts,
+    keyword,
+  ]);
+
+  // === Handle filter actions ===
+  const handleApplyPriceFilter = () => {
+    if (tempMinPrice && tempMaxPrice) {
+      const min = parseFloat(tempMinPrice);
+      const max = parseFloat(tempMaxPrice);
+      if (min > max) return alert("Giá tối thiểu không thể lớn hơn giá tối đa");
     }
+    setMinPrice(tempMinPrice);
+    setMaxPrice(tempMaxPrice);
+    setPage(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-    fetchProducts(params);
-  }, [selectedCategory, selectedBrand, searchTerm, sortBy, page]);
+  const handleResetPriceFilter = () => {
+    setMinPrice("");
+    setMaxPrice("");
+    setTempMinPrice("");
+    setTempMaxPrice("");
+    setPage(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-  // === Handle category change ===
+  const handleStockFilterChange = (filter: "all" | "inStock" | "outOfStock") => {
+    setStockFilter(filter);
+    setPage(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleCategoryChange = (category: number) => {
     setSelectedCategory(category);
     setPage(0);
-    if (category === 0) {
-      searchParams.delete("category");
-    } else {
-      searchParams.set("category", category.toString());
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (category === 0) searchParams.delete("category");
+    else searchParams.set("category", category.toString());
     setSearchParams(searchParams);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // === Handle brand change ===
   const handleBrandChange = (brand: number) => {
     setSelectedBrand(brand);
     setPage(0);
-    if (brand === 0) {
-      searchParams.delete("brand");
-    } else {
-      searchParams.set("brand", brand.toString());
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (brand === 0) searchParams.delete("brand");
+    else searchParams.set("brand", brand.toString());
     setSearchParams(searchParams);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // === Handle add to cart ===
   const handleAddToCart = async (product: ProductSummary) => {
     const success = await cartService.addToCart(product);
-    if (success) {
-      window.dispatchEvent(new Event("cartUpdated"));
-    }
+    if (success) window.dispatchEvent(new Event("cartUpdated"));
   };
+
+  const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
+  const displayedBrands = showAllBrands ? brands : brands.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -162,17 +228,19 @@ const Products: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-800 mb-2">Sản Phẩm An Ninh</h1>
+          <h1 className="text-3xl font-bold text-zinc-800 mb-2">
+            Sản Phẩm An Ninh
+          </h1>
           <p className="text-gray-600">
             Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
           </p>
         </div>
 
         {/* Search & Controls */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             {/* Search box */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative w-full lg:flex-1 lg:max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
@@ -187,41 +255,23 @@ const Products: React.FC = () => {
             </div>
 
             {/* Sort & View controls */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="lg:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="lg:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex-1 sm:flex-initial justify-center"
               >
                 <Filter className="h-4 w-4" />
-                Bộ lọc
+                <span className="text-sm">Bộ lọc</span>
               </button>
 
-              <div className="relative inline-block">
+              <div className="relative inline-block flex-1 sm:flex-initial">
                 <select
                   value={sortBy}
                   onChange={(e) => {
                     setSortBy(e.target.value);
                     setPage(0);
                   }}
-                  className="
-                    w-52
-                    px-4 py-2
-                    bg-white
-                    text-gray-700
-                    text-sm
-                    rounded-xl
-                    border border-gray-200
-                    shadow-sm
-                    transition-all
-                    duration-200
-                    hover:border-gray-400
-                    focus:outline-none
-                    focus:ring-2
-                    focus:ring-purple-500/40
-                    focus:border-purple-500
-                    appearance-none
-                    cursor-pointer
-                  "
+                  className="w-full sm:w-52 px-3 sm:px-4 py-2 bg-white text-gray-700 text-sm rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 appearance-none cursor-pointer"
                 >
                   <option value="name">Sắp xếp theo tên</option>
                   <option value="price-low">Giá thấp đến cao</option>
@@ -229,7 +279,6 @@ const Products: React.FC = () => {
                   <option value="rating">Đánh giá cao nhất</option>
                 </select>
 
-                {/* Icon mũi tên */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
@@ -237,11 +286,16 @@ const Products: React.FC = () => {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </div>
 
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <div className="hidden sm:flex border border-gray-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setViewMode("grid")}
                   className={`p-2 ${
@@ -268,15 +322,14 @@ const Products: React.FC = () => {
         </div>
 
         {/* Layout */}
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
           <aside
-            className={`w-64 flex-shrink-0 ${
+            className={`w-full lg:w-64 flex-shrink-0 ${
               showFilters ? "block" : "hidden lg:block"
             }`}
           >
-            <div className="bg-white rounded-lg shadow-sm p-6 space-y-8">
-
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 space-y-6 sm:space-y-8">
               {/* Category filter */}
               <div>
                 <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
@@ -288,7 +341,6 @@ const Products: React.FC = () => {
 
                 <div className="space-y-2">
                   {loadingFilters ? (
-                    // Skeleton placeholders (5 items)
                     [...Array(5)].map((_, i) => (
                       <div
                         key={i}
@@ -296,19 +348,39 @@ const Products: React.FC = () => {
                       />
                     ))
                   ) : (
-                    categories.map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => handleCategoryChange(category.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                          selectedCategory === category.id
-                            ? "bg-purple-100 text-purple-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {category.name}
-                      </button>
-                    ))
+                    <>
+                      {displayedCategories.map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => handleCategoryChange(category.id)}
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                            selectedCategory === category.id
+                              ? "bg-purple-100 text-purple-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                      {categories.length > 6 && (
+                        <button
+                          onClick={() => setShowAllCategories(!showAllCategories)}
+                          className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                        >
+                          {showAllCategories ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" />
+                              Thu gọn
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4" />
+                              Xem tất cả ({categories.length - 6} danh mục)
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -324,7 +396,6 @@ const Products: React.FC = () => {
 
                 <div className="space-y-2">
                   {loadingFilters ? (
-                    // Skeleton placeholders (5 items)
                     [...Array(5)].map((_, i) => (
                       <div
                         key={i}
@@ -332,20 +403,128 @@ const Products: React.FC = () => {
                       />
                     ))
                   ) : (
-                    brands.map((brand) => (
-                      <button
-                        key={brand.id}
-                        onClick={() => handleBrandChange(brand.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                          selectedBrand === brand.id
-                            ? "bg-purple-100 text-purple-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {brand.name}
-                      </button>
-                    ))
+                    <>
+                      {displayedBrands.map((brand) => (
+                        <button
+                          key={brand.id}
+                          onClick={() => handleBrandChange(brand.id)}
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                            selectedBrand === brand.id
+                              ? "bg-purple-100 text-purple-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {brand.name}
+                        </button>
+                      ))}
+                      {brands.length > 6 && (
+                        <button
+                          onClick={() => setShowAllBrands(!showAllBrands)}
+                          className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                        >
+                          {showAllBrands ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" />
+                              Thu gọn
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4" />
+                              Xem tất cả ({brands.length - 6} thương hiệu)
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </>
                   )}
+                </div>
+              </div>
+
+              {/* Price filter */}
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
+                  Khoảng giá
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">
+                      Giá tối thiểu (₫)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={tempMinPrice}
+                      onChange={(e) => setTempMinPrice(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">
+                      Giá tối đa (₫)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={tempMaxPrice}
+                      onChange={(e) => setTempMaxPrice(e.target.value)}
+                      placeholder="Không giới hạn"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleApplyPriceFilter}
+                      className="flex-1 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                    >
+                      Áp dụng
+                    </button>
+                    <button
+                      onClick={handleResetPriceFilter}
+                      className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock filter */}
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
+                  Tình trạng
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleStockFilterChange("all")}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                      stockFilter === "all"
+                        ? "bg-purple-100 text-purple-600 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => handleStockFilterChange("inStock")}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                      stockFilter === "inStock"
+                        ? "bg-purple-100 text-purple-600 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Còn hàng
+                  </button>
+                  <button
+                    onClick={() => handleStockFilterChange("outOfStock")}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                      stockFilter === "outOfStock"
+                        ? "bg-purple-100 text-purple-600 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Hết hàng
+                  </button>
                 </div>
               </div>
             </div>
@@ -354,77 +533,83 @@ const Products: React.FC = () => {
           {/* Products Grid */}
           <div className="flex-1">
             <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {[...Array(9)].map((_, index) => (
-                  <SkeletonCard key={index} />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`${selectedCategory}-${page}-${sortBy}-${searchTerm}`}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <p className="text-gray-600">
-                    Hiển thị {products.length} / {totalElements} sản phẩm
-                  </p>
-                </div>
-
-                {products.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm nào</p>
+              {loading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                >
+                  {[...Array(9)].map((_, index) => (
+                    <SkeletonCard key={index} />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`${selectedCategory}-${page}-${sortBy}-${searchTerm}-${minPrice}-${maxPrice}-${stockFilter}`}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <p className="text-gray-600 text-sm sm:text-base">
+                      Hiển thị {products.length} / {totalElements} sản phẩm
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <div
-                      className={`grid gap-6 ${
-                        viewMode === "grid"
-                          ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                          : "grid-cols-1"
-                      }`}
-                    >
-                      {products.map((product, index) => (
-                        <motion.div
-                          key={product.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                        >
-                          <ProductCard product={product} onAddToCart={handleAddToCart} />
-                        </motion.div>
-                      ))}
-                    </div>
 
-                    <Pagination
-                      page={page}
-                      totalPages={totalPages}
-                      totalElements={totalElements}
-                      pageSize={pageSize}
-                      onPageChange={(newPage) => {
-                        setPage(newPage);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      onPageSizeChange={(newSize) => {
-                        setPageSize(newSize);
-                        setPage(0);
-                      }}
-                    />
-                  </>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  {products.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 text-lg">
+                        Không tìm thấy sản phẩm nào
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`grid gap-4 sm:gap-6 ${
+                          viewMode === "grid"
+                            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                            : "grid-cols-1"
+                        }`}
+                      >
+                        {products.map((product, index) => (
+                          <motion.div
+                            key={product.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                          >
+                            <ProductCard
+                              product={product}
+                              onAddToCart={handleAddToCart}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <Pagination
+                        page={page}
+                        totalPages={totalPages}
+                        totalElements={totalElements}
+                        pageSize={pageSize}
+                        onPageChange={(newPage) => {
+                          setPage(newPage);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        onPageSizeChange={(newSize) => {
+                          setPageSize(newSize);
+                          setPage(0);                          
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      />
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>

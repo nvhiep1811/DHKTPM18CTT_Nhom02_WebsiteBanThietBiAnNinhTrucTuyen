@@ -14,6 +14,7 @@ import secure_shop.backend.dto.product.ProductDetailsDTO;
 import secure_shop.backend.dto.product.ProductSummaryDTO;
 import secure_shop.backend.service.ProductService;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -29,9 +30,14 @@ public class ProductController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean inStock,
             @RequestParam(required = false) String keyword) {
 
-        Page<ProductSummaryDTO> products = productService.filterProducts(active, categoryId, brandId, keyword, pageable);
+        Page<ProductSummaryDTO> products = productService.filterProducts(
+                active, categoryId, brandId, minPrice, maxPrice, inStock, keyword, pageable
+        );
         return ResponseEntity.ok(products);
     }
 

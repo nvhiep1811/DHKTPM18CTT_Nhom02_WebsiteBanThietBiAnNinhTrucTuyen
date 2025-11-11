@@ -12,6 +12,7 @@ import secure_shop.backend.mapper.ProductMapper;
 import secure_shop.backend.repositories.*;
 import secure_shop.backend.service.ProductService;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,10 +30,13 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductSummaryDTO> filterProducts(Boolean active,
                                                   Long categoryId,
                                                   Long brandId,
+                                                  BigDecimal minPrice,
+                                                  BigDecimal maxPrice,
+                                                  Boolean inStock,
                                                   String keyword,
                                                   Pageable pageable) {
         return productRepository
-                .filterProducts(active, categoryId, brandId, keyword, pageable);
+                .filterProducts(active, categoryId, brandId, minPrice, maxPrice, inStock, keyword, pageable);
     }
 
     @Override

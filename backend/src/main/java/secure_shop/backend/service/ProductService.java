@@ -6,6 +6,7 @@ import secure_shop.backend.dto.product.ProductDTO;
 import secure_shop.backend.dto.product.ProductDetailsDTO;
 import secure_shop.backend.dto.product.ProductSummaryDTO;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface ProductService {
@@ -22,9 +23,12 @@ public interface ProductService {
     Boolean deleteProduct(UUID id);
 
     Page<ProductSummaryDTO> filterProducts(Boolean active,
-                                                  Long categoryId,
-                                                  Long brandId,
-                                                  String keyword,
-                                                  Pageable pageable);
+                                           Long categoryId,
+                                           Long brandId,
+                                           BigDecimal minPrice,
+                                           BigDecimal maxPrice,
+                                           Boolean inStock,
+                                           String keyword,
+                                           Pageable pageable);
 
 }
