@@ -99,8 +99,6 @@ class CartService {
           availableStock: product.availableStock,
           quantity: quantity,
         });
-
-        toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng!`);
         return true;
       } catch (error: any) {
         // Xử lý lỗi từ backend

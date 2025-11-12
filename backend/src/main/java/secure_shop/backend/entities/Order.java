@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Objects;
 
 @Entity
 @Table(
@@ -89,6 +90,7 @@ public class Order extends BaseEntity {
         if (orderItems != null && !orderItems.isEmpty()) {
             this.subTotal = orderItems.stream()
                     .map(OrderItem::getLineTotal)
+                    .filter(Objects::nonNull) // Bỏ qua null để safety
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         } else {
             this.subTotal = BigDecimal.ZERO;
