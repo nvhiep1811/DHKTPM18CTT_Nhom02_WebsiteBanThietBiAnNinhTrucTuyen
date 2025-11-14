@@ -13,8 +13,11 @@ import secure_shop.backend.repositories.*;
 import secure_shop.backend.service.ProductService;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +67,18 @@ public class ProductServiceImpl implements ProductService {
         product.setActive(true);
 
         var saved = productRepository.save(product);
+        if (dto.getMediaAssets() != null && !dto.getMediaAssets().isEmpty()) {
+            List<MediaAsset> mediaAssets = dto.getMediaAssets().stream()
+                    .map(mediaDTO -> {
+                        MediaAsset media = new MediaAsset();
+                        media.setUrl(mediaDTO.getUrl());
+                        media.setAltText(mediaDTO.getAltText());
+                        media.setProduct(product);
+                        return media;
+                    })
+                    .collect(Collectors.toList());
+            product.setMediaAssets(mediaAssets);
+        }
         return productMapper.toProductDTO(saved);
     }
 
@@ -107,6 +122,28 @@ public class ProductServiceImpl implements ProductService {
         } else {
             existing.setCategory(null);
         }
+
+        if (existing.getMediaAssets() != null) {
+            existing.getMediaAssets().clear();
+        }
+
+        if (dto.getMediaAssets() != null && !dto.getMediaAssets().isEmpty()) {
+            List<MediaAsset> newMediaAssets = dto.getMediaAssets().stream()
+                    .map(mediaDTO -> {
+                        MediaAsset media = new MediaAsset();
+                        media.setUrl(mediaDTO.getUrl());
+                        media.setAltText(mediaDTO.getAltText());
+                        media.setProduct(existing);
+                        return media;
+                    })
+                    .collect(Collectors.toList());
+
+            if (existing.getMediaAssets() == null) {
+                existing.setMediaAssets(new ArrayList<>());
+            }
+            existing.getMediaAssets().addAll(newMediaAssets);
+        }
+
 
         var updated = productRepository.save(existing);
         return productMapper.toProductDTO(updated);

@@ -40,7 +40,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
         p.thumbnailUrl,
         i.onHand - i.reserved,
         (CASE WHEN i.onHand - i.reserved > 0 THEN true ELSE false END),
-        new secure_shop.backend.dto.product.CategorySummaryDTO(c.id, c.name, c.imageUrl),
+        new secure_shop.backend.dto.product.CategorySummaryDTO(c.id, c.name, c.imageUrl, c.description, c.active),
         new secure_shop.backend.dto.product.BrandDTO(b.id, b.name),
         p.rating,
         p.reviewCount

@@ -7,22 +7,8 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';
 import { useAppSelector } from '../hooks';
-import { productApi } from '../utils/api';
-import type { ProductDetail } from '../types/types';
-
-
-interface Review {
-  id: string;
-  userName: string;
-  userId: string;
-  rating: number;
-  comment: string;
-  date: string;
-  verified: boolean;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  productId: string;
-  orderItemId?: string;
-}
+import { productApi, ReviewApi, orderApi } from '../utils/api';
+import type { ProductDetail, Review } from '../types/types';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +25,7 @@ const ProductDetail: React.FC = () => {
     comment: ''
   });
   const [filterRating, setFilterRating] = useState<number | null>(null);
+  const [userOrderItems, setUserOrderItems] = useState<any[]>([]);
 
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
@@ -46,7 +33,10 @@ const ProductDetail: React.FC = () => {
   const fetchProductDetails = async (productId: string) => {
     try {
       setLoading(true);
-      const response = await productApi.getById(productId);
+      const [response, reviewsData] = await Promise.all([
+        productApi.getById(productId),
+        ReviewApi.getReviewsByProduct(productId)
+      ]);
 
       const baseProduct = {
         ...response,
@@ -162,6 +152,10 @@ const ProductDetail: React.FC = () => {
       }
 
       setProduct(baseProduct);
+      setReviews(reviewsData || []);
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      toast.error('Không thể tải thông tin sản phẩm');
     } finally {
       setLoading(false);
     }
@@ -172,6 +166,34 @@ const ProductDetail: React.FC = () => {
       fetchProductDetails(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (isAuthenticated && userRole !== 'guest') {
+        try {
+          const ordersData = await orderApi.getAll();
+          const items: any[] = [];
+          ordersData.forEach((order: any) => {
+            if (['DELIVERED', 'IN_TRANSIT', 'WAITING_FOR_DELIVERY'].includes(order.status)) {
+              order.items?.forEach((item: any) => {
+                items.push({
+                  orderItemId: item.id,
+                  productId: item.product.id,
+                  orderId: order.id,
+                  orderStatus: order.status
+                });
+              });
+            }
+          });
+          setUserOrderItems(items);
+        } catch (error) {
+          console.error('Error fetching user orders:', error);
+          setUserOrderItems([]);
+        }
+      }
+    };
+    fetchUserOrders();
+  }, [isAuthenticated, userRole]);
 
   useEffect(() => {
       window.scrollTo(0, 0);
@@ -224,6 +246,7 @@ const ProductDetail: React.FC = () => {
       navigate('/login');
       return;
     }
+    
     setIsReviewModalOpen(true);
   };
 
@@ -232,7 +255,7 @@ const ProductDetail: React.FC = () => {
     setNewReview({ rating: 5, comment: '' });
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (!newReview.comment.trim()) {
       toast.error('Vui lòng nhập nội dung đánh giá!');
       return;
@@ -243,22 +266,36 @@ const ProductDetail: React.FC = () => {
       return;
     }
 
-    const review: Review = {
-      id: Date.now().toString(),
-      userName: user?.name || 'Anonymous',
-      userId: user?.id || 'guest',
-      rating: newReview.rating,
-      comment: newReview.comment,
-      date: new Date().toISOString(),
-      verified: true, // Assume user has purchased
-      status: 'PENDING', // Will be PENDING until admin approves
-      productId: product?.id || '',
-      orderItemId: 'OI' + Date.now()
-    };
+    if (!product?.id) {
+      toast.error('Không tìm thấy thông tin sản phẩm!');
+      return;
+    }
 
-    setReviews([review, ...reviews]);
-    toast.success('Đánh giá của bạn đã được gửi và đang chờ duyệt!');
-    handleCloseReviewModal();
+    // Tìm orderItemId từ danh sách orders của user
+    const purchasedItem = userOrderItems.find(item => item.productId === product.id);
+    
+    if (!purchasedItem) {
+      toast.error('Bạn cần mua sản phẩm này trước khi có thể đánh giá!');
+      return;
+    }
+
+    try {
+      const reviewData = {
+        productId: product.id,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        orderItemId: purchasedItem.orderItemId
+      };
+
+      const createdReview = await ReviewApi.create(reviewData);
+      setReviews([createdReview, ...reviews]);
+      toast.success('Đánh giá của bạn đã được gửi và đang chờ duyệt!');
+      handleCloseReviewModal();
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      const errorMessage = error.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại!';
+      toast.error(errorMessage);
+    }
   };
 
   // Filter reviews by rating
@@ -641,22 +678,15 @@ const ProductDetail: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-zinc-800">{review.userName}</span>
-                          {review.verified && (
-                            <span className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
-                              Đã mua hàng
-                            </span>
-                          )}
-                          {/* Status badge for admin */}
-                          {userRole === 'admin' && (
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                              review.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                              review.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                              'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {review.status === 'APPROVED' ? 'Đã duyệt' :
-                               review.status === 'REJECTED' ? 'Đã từ chối' : 'Chờ duyệt'}
-                            </span>
-                          )}
+                          {/* Status badge */}
+                          <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                            review.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                            review.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {review.status === 'APPROVED' ? 'Đã duyệt' :
+                             review.status === 'REJECTED' ? 'Đã từ chối' : 'Chờ duyệt'}
+                          </span>
                         </div>
                         <div className="flex items-center mt-1">
                           {[...Array(5)].map((_, i) => (
@@ -670,7 +700,7 @@ const ProductDetail: React.FC = () => {
                             />
                           ))}
                           <span className="text-sm text-gray-500 ml-2">
-                            {new Date(review.date).toLocaleDateString('vi-VN')}
+                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
                       </div>
