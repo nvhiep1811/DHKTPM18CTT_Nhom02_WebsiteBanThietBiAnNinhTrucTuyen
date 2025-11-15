@@ -17,7 +17,6 @@ import Terms from '../pages/Terms';
 import Privacy from '../pages/Privacy';
 import Checkout from "../pages/Checkout";
 import OrderSuccess from "../pages/OrderSuccess";
-import ComFirmOrder from "../pages/ComFirmOrder";
 
 export const publicRoutes = {
   path: "/",
@@ -78,14 +77,6 @@ export const publicRoutes = {
         <GuestRoute>
           <VerifyEmail />
         </GuestRoute>
-      ),
-    },
-    {
-      path: "confirm-order",
-      element: (
-        <UserGuard>
-          <ComFirmOrder />
-        </UserGuard>
       ),
     },
 

@@ -71,10 +71,7 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/error",
-                                "/api/orders/confirm",
-                                "/api/orders/*/confirmation-status",
-                                "/api/orders/order-success"
+                                "/error"
                         ).permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
 
