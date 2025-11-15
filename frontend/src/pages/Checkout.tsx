@@ -179,130 +179,103 @@ const Checkout: React.FC = () => {
     toast.info('Đã xóa mã giảm giá');
   };
 
-  const sendOrderConfirmationEmail = async (orderData: any) => {
-    console.log('Sending confirmation email to:', shippingInfo.email);
-    console.log('Order data:', orderData);
-    return true;
-  };
-
   const handlePlaceOrder = async () => {
-  if (!validateForm()) {
-    toast.error('Vui lòng kiểm tra lại thông tin!');
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    // ========================================
-    // 1. CHUẨN BỊ DỮ LIỆU
-    // ========================================
-    
-    // Chuẩn bị order items
-    const orderItems = cartItems.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity
-    }));
-
-    // Chuẩn bị shipping address (Map<String, String>)
-    const shippingAddressMap: Record<string, string> = {
-      fullName: shippingInfo.fullName,
-      phone: shippingInfo.phone,
-      email: shippingInfo.email,
-      address: shippingInfo.address,
-      ward: shippingInfo.ward,
-      district: shippingInfo.district,
-      city: shippingInfo.city
-    };
-
-    // Thêm note nếu có
-    if (shippingInfo.note.trim()) {
-      shippingAddressMap.note = shippingInfo.note;
+    if (!validateForm()) {
+      toast.error('Vui lòng kiểm tra lại thông tin!');
+      return;
     }
 
-    // Tạo order request
-    const orderRequest = {
-      items: orderItems,
-      shippingFee: shippingFees[shippingMethod],
-      discountCode: appliedCoupon?.code || null,
-      shippingAddress: shippingAddressMap
-    };
+    setIsSubmitting(true);
 
-    // ========================================
-    // 2. GỌI API TẠO ORDER
-    // ========================================
-    const createdOrder = await orderApi.create(orderRequest);
+    try {
+      // Chuẩn bị order items
+      const orderItems = cartItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity
+      }));
 
-    // ========================================
-    // 3. XỬ LÝ RESPONSE - Lấy thông tin từ backend
-    // ========================================
-    
-    // Tạo orderData để hiển thị ở trang success
-    const orderData = {
-      orderId: createdOrder.id, // UUID từ backend
-      orderNumber: `ORD${createdOrder.id.split('-')[0].toUpperCase()}`, // VD: ORDABC123
-      items: cartItems, // Danh sách sản phẩm (có đầy đủ thông tin)
-      shippingInfo, // Thông tin giao hàng
-      shippingMethod, // standard/express
-      paymentMethod, // cod/bank_transfer/e_wallet
-      subtotal: calculateSubtotal(), // Tạm tính
-      discount: calculateDiscount(), // Giảm giá
-      shippingFee: shippingFees[shippingMethod], // Phí ship
-      total: calculateTotal(), // Tổng cộng
-      coupon: appliedCoupon, // Mã giảm giá đã áp dụng
-      orderDate: createdOrder.createdAt || new Date().toISOString(), // Ngày đặt
-      status: createdOrder.status, // PENDING/CONFIRMED/...
-      paymentStatus: createdOrder.paymentStatus // UNPAID/PAID
-    };
+      // Chuẩn bị shipping address (Map<String, String>)
+      const shippingAddressMap: Record<string, string> = {
+        fullName: shippingInfo.fullName,
+        phone: shippingInfo.phone,
+        email: shippingInfo.email,
+        address: shippingInfo.address,
+        ward: shippingInfo.ward,
+        district: shippingInfo.district,
+        city: shippingInfo.city
+      };
 
-    // ========================================
-    // 5. XÓA GIỎ HÀNG SAU KHI ĐẶT HÀNG THÀNH CÔNG
-    // ========================================
-    
-    // CHỈ xóa khi thanh toán từ cart
-    // KHÔNG xóa khi mua ngay (vì sản phẩm chưa có trong cart)
-    if (location.state?.cartItems) {
-      for (const item of cartItems) {
-        await cartService.removeItem(item.productId);
+      // Thêm note nếu có
+      if (shippingInfo.note.trim()) {
+        shippingAddressMap.note = shippingInfo.note;
       }
-      // Cập nhật UI giỏ hàng
-      window.dispatchEvent(new Event('cartUpdated'));
-    }
 
-    // ✅ Thông báo thành công
-    toast.success('Đặt hàng thành công!');
-    
-    // Chuyển sang trang order success
-    navigate('/order-success', { state: { orderData } });
+      // Tạo order request
+      const orderRequest = {
+        items: orderItems,
+        shippingFee: shippingFees[shippingMethod],
+        discountCode: appliedCoupon?.code || null,
+        shippingAddress: shippingAddressMap
+      };
 
-  } catch (error: any) {
-    console.error('Error placing order:', error);
-    
-    // ========================================
-    // 4. XỬ LÝ LỖI CHI TIẾT
-    // ========================================
-    
-    // 400 Bad Request - Thông tin không hợp lệ
-    if (error.response?.status === 400) {
-      const errorMessage = error.response?.data?.message || 'Thông tin đơn hàng không hợp lệ';
-      toast.error(errorMessage);
-    } 
-    // 404 Not Found - Sản phẩm không tồn tại
-    else if (error.response?.status === 404) {
-      toast.error('Một số sản phẩm không còn tồn tại');
-    } 
-    // 409 Conflict - Hết hàng hoặc không đủ số lượng
-    else if (error.response?.status === 409) {
-      toast.error('Một số sản phẩm đã hết hàng hoặc không đủ số lượng');
-    } 
-    // Lỗi chung
-    else {
-      toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!');
+      const createdOrder = await orderApi.create(orderRequest);
+
+      // Tạo orderData để hiển thị ở trang success
+      const orderData = {
+        orderId: createdOrder.id, // UUID từ backend
+        orderNumber: `ORD${createdOrder.id.split('-')[0].toUpperCase()}`, // VD: ORDABC123
+        items: cartItems, // Danh sách sản phẩm (có đầy đủ thông tin)
+        shippingInfo, // Thông tin giao hàng
+        shippingMethod, // standard/express
+        paymentMethod, // cod/bank_transfer/e_wallet
+        subtotal: calculateSubtotal(), // Tạm tính
+        discount: calculateDiscount(), // Giảm giá
+        shippingFee: shippingFees[shippingMethod], // Phí ship
+        total: calculateTotal(), // Tổng cộng
+        coupon: appliedCoupon, // Mã giảm giá đã áp dụng
+        orderDate: createdOrder.createdAt || new Date().toISOString(), // Ngày đặt
+        status: createdOrder.status, // PENDING/CONFIRMED/...
+        paymentStatus: createdOrder.paymentStatus // UNPAID/PAID
+      };
+
+      if (location.state?.cartItems) {
+        for (const item of cartItems) {
+          await cartService.removeItem(item.productId);
+        }
+        // Cập nhật UI giỏ hàng
+        window.dispatchEvent(new Event('cartUpdated'));
+      }
+
+      // ✅ Thông báo thành công
+      toast.success('Đặt hàng thành công!');
+      
+      // Chuyển sang trang order success
+      navigate('/order-success', { state: { orderData } });
+
+    } catch (error: any) {
+      console.error('Error placing order:', error);
+      
+      // 400 Bad Request - Thông tin không hợp lệ
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.message || 'Thông tin đơn hàng không hợp lệ';
+        toast.error(errorMessage);
+      } 
+      // 404 Not Found - Sản phẩm không tồn tại
+      else if (error.response?.status === 404) {
+        toast.error('Một số sản phẩm không còn tồn tại');
+      } 
+      // 409 Conflict - Hết hàng hoặc không đủ số lượng
+      else if (error.response?.status === 409) {
+        toast.error('Một số sản phẩm đã hết hàng hoặc không đủ số lượng');
+      } 
+      // Lỗi chung
+      else {
+        toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   if (cartItems.length === 0) {
     return (

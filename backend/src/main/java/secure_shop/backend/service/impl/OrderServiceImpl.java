@@ -22,6 +22,11 @@ import secure_shop.backend.repositories.ProductRepository;
 import secure_shop.backend.service.OrderService;
 import secure_shop.backend.repositories.InventoryRepository;
 import secure_shop.backend.service.InventoryService;
+import org.springframework.transaction.annotation.Propagation;
+import secure_shop.backend.repositories.UserRepository;
+
+import org.springframework.scheduling.annotation.Async;
+import secure_shop.backend.service.EmailService;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,6 +44,8 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Override
     public OrderDTO createOrder(OrderCreateRequest request, UUID userId) {
@@ -46,7 +53,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessRuleViolationException("Order must contain at least one item");
         }
 
-        // Reserve inventory first for all items. Reservations participate in the same transaction
+        // Reserve inventory first for all items
         for (OrderItemRequest itemReq : request.getItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product", itemReq.getProductId()));
@@ -57,7 +64,6 @@ public class OrderServiceImpl implements OrderService {
             }
             var inv = optInv.get();
 
-            // reserve - will participate in the outer transaction; if any reserve fails, the exception will rollback all changes
             inventoryService.reserveStock(inv.getId(), itemReq.getQuantity());
         }
 
@@ -65,20 +71,22 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .shippingFee(request.getShippingFee())
                 .shippingAddress(request.getShippingAddress())
+                .status(OrderStatus.PENDING) // ✅ Mặc định là PENDING
                 .build();
 
-        // set user (only id) if provided
+        // ✅ Load đầy đủ User entity
+        User user = null;
         if (userId != null) {
-            User user = new User();
-            user.setId(userId);
+            user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", userId));
             order.setUser(user);
         } else if (request.getUserId() != null) {
-            User user = new User();
-            user.setId(request.getUserId());
+            user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", request.getUserId()));
             order.setUser(user);
         }
 
-       // create order items and attach to order
+        // create order items and attach to order
         for (OrderItemRequest itemReq : request.getItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product", itemReq.getProductId()));
@@ -90,16 +98,21 @@ public class OrderServiceImpl implements OrderService {
                     .product(product)
                     .quantity(itemReq.getQuantity())
                     .unitPrice(unitPrice)
-                    .lineTotal(lineTotal) // Tính ngay
+                    .lineTotal(lineTotal)
                     .order(order)
                     .build();
             order.getOrderItems().add(item);
         }
 
-        // Persist order (totals will be calculated by @PrePersist)
+        // Persist order
         Order savedOrder = orderRepository.save(order);
+        
+        System.out.println("🎯 [ORDER] Order created with PENDING status, ID: " + savedOrder.getId());
+        System.out.println("📧 [ORDER] Confirmation email will be sent to: " + user.getEmail());
+        
         return orderMapper.toDTO(savedOrder);
     }
+    
 
     @Override
     public OrderDTO updateOrder(UUID id, OrderDTO orderDTO) {
