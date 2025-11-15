@@ -22,7 +22,7 @@ const ConfirmOrder: React.FC = () => {
     // Gọi API xác nhận
     const confirmOrder = async () => {
   try {
-    const response = await orderApi.confirmOrder(token);
+    const response = await orderApi.confirmOrderByEmail(token);
 
     if (response.success) {
       setStatus("success");
@@ -43,10 +43,7 @@ const ConfirmOrder: React.FC = () => {
     if (msg === "Order already confirmed") {
       setStatus("success");
       setMessage("Đơn hàng đã được xác nhận rồi.");
-    } else {
-      setStatus("error");
-      setMessage(msg || "Đã có lỗi xảy ra. Vui lòng thử lại sau.");
-    }
+    } 
   }
 };
 
