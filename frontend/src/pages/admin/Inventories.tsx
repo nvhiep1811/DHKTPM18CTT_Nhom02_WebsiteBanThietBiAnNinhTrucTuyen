@@ -14,7 +14,7 @@ export const loadData = async () => {
   try {
     const [inventories, productsResponse] = await Promise.all([
       InventoryApi.getAll(),
-      productApi.getAll()
+      productApi.getAll({ page: 0, size: 100 })
     ]);
     const products = productsResponse?.content || [];
     return { inventories, products };
