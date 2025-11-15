@@ -19,7 +19,6 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<InventoryDTO>> getAllInventories() {
         List<InventoryDTO> inventories = inventoryService.getAllInventories();
         return ResponseEntity.ok(inventories);
