@@ -28,7 +28,7 @@ public class ProductServiceImpl implements ProductService {
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
-
+    private final InventoryRepository inventoryRepository;
     @Override
     public Page<ProductSummaryDTO> filterProducts(Boolean active,
                                                   Long categoryId,
@@ -67,6 +67,13 @@ public class ProductServiceImpl implements ProductService {
         product.setActive(true);
 
         var saved = productRepository.save(product);
+
+        Inventory inventory = new Inventory();
+        inventory.setProduct(saved);
+        inventory.setOnHand(dto.getAvailableStock() != null ? dto.getAvailableStock() : 0);
+        inventory.setReserved(0);
+        inventoryRepository.save(inventory);
+
         if (dto.getMediaAssets() != null && !dto.getMediaAssets().isEmpty()) {
             List<MediaAsset> mediaAssets = dto.getMediaAssets().stream()
                     .map(mediaDTO -> {
