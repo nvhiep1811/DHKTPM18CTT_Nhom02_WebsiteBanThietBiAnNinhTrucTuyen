@@ -26,7 +26,6 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<ReviewDTO>> getAllReviews(@PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(reviewService.getReviewsPage(pageable));
     }

@@ -14,7 +14,7 @@ public class InventoryMapper {
         dto.setOnHand(entity.getOnHand());
         dto.setReserved(entity.getReserved());
         dto.setInStock(entity.getOnHand() - entity.getReserved() > 0);
-
+        dto.setProductId(entity.getProduct().getId());
         return dto;
     }
 
