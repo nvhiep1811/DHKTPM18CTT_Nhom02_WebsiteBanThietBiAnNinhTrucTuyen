@@ -116,21 +116,6 @@ export const orderApi = {
     const response = await axiosInstance.post("/orders", data);
     return response.data;
   },
-  /**
-   * ✅ Kiểm tra trạng thái xác nhận đơn hàng
-   */
-  checkConfirmationStatus: async (orderId: string) => {
-    const response = await axiosInstance.get(`/orders/${orderId}/confirmation-status`);
-    return response.data; // { orderId, isConfirmed, status }
-  },
-
-  /**
-   * ✅ Xác nhận đơn hàng qua token
-   */
-  confirmOrder: async (token: string) => {
-    const response = await axiosInstance.get(`/orders/confirm?token=${token}`);
-    return response.data; // { success, message }
-  }
 };
 
 // User API

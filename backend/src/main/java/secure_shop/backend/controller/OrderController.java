@@ -13,12 +13,6 @@ import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.service.OrderService;
 
-import java.util.Map;
-
-import secure_shop.backend.service.OrderConfirmationService;
-import secure_shop.backend.dto.order.request.OrderCreateRequest;
-
-
 import java.util.List;
 import java.util.UUID;
 
@@ -28,7 +22,6 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
-    private final OrderConfirmationService orderConfirmationService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -49,74 +42,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderDetailsById(id));
     }
 
-     @PostMapping
+    @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OrderDTO> createOrder(
-            @Valid @RequestBody OrderCreateRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody secure_shop.backend.dto.order.request.OrderCreateRequest request,
+                                                @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getId();
-        OrderDTO order = orderService.createOrder(request, userId);
-        
-        // ✅ Gửi email xác nhận async
-        orderConfirmationService.sendOrderConfirmationEmail(order.getId());
-        
-        return ResponseEntity.ok(order);
-    }
-
-   /**
-     * ✅ Endpoint xác nhận đơn hàng qua token từ email
-     * GET /api/orders/confirm?token=xxx
-     * PUBLIC - Không cần authentication
-     */
-    @GetMapping("/confirm")
-    public ResponseEntity<Map<String, Object>> confirmOrder(@RequestParam String token) {
-        try {
-            boolean success = orderConfirmationService.confirmOrder(token);
-            
-            if (success) {
-                return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Xác nhận đơn hàng thành công! Đơn hàng của bạn đang được xử lý."
-                ));
-            } else {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Link xác nhận không hợp lệ hoặc đã hết hạn."
-                ));
-            }
-        } catch (Exception e) {
-            System.err.println("❌ [CONTROLLER] Error confirming order: " + e.getMessage());
-            return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "message", "Đã có lỗi xảy ra. Vui lòng thử lại sau."
-            ));
-        }
-    }
-
-    /**
-     * ✅ Endpoint kiểm tra trạng thái xác nhận đơn hàng
-     * GET /api/orders/{orderId}/confirmation-status
-     * PUBLIC - Không cần authentication (để polling work)
-     */
-    @GetMapping("/{orderId}/confirmation-status")
-    public ResponseEntity<Map<String, Object>> checkConfirmationStatus(@PathVariable UUID orderId) {
-        try {
-            boolean isConfirmed = orderConfirmationService.isOrderConfirmed(orderId);
-            
-            return ResponseEntity.ok(Map.of(
-                "orderId", orderId.toString(),
-                "isConfirmed", isConfirmed,
-                "status", isConfirmed ? "CONFIRMED" : "PENDING"
-            ));
-        } catch (Exception e) {
-            System.err.println("❌ [CONTROLLER] Error checking confirmation status: " + e.getMessage());
-            return ResponseEntity.status(500).body(Map.of(
-                "orderId", orderId.toString(),
-                "isConfirmed", false,
-                "status", "ERROR",
-                "message", "Không thể kiểm tra trạng thái đơn hàng"
-            ));
-        }
+        return ResponseEntity.ok(orderService.createOrder(request, userId));
     }
 
     @PutMapping("/{id}")
