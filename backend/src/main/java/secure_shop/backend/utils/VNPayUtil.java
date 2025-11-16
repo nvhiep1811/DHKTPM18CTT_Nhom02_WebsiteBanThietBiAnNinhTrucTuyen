@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class VNPayUtil {
@@ -67,6 +68,9 @@ public class VNPayUtil {
             }
         }
 
+        // Log hash data for debugging
+        VNPayLogger.logHashData(hashData.toString());
+
         return hmacSHA512(secretKey, hashData.toString());
     }
 
@@ -94,6 +98,9 @@ public class VNPayUtil {
                 }
             }
         }
+
+        // Log raw query string for debugging
+        VNPayLogger.logRawQueryString(query.toString());
 
         return query.toString();
     }
@@ -165,5 +172,16 @@ public class VNPayUtil {
             return "";
         }
     }
+    public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
+        return paramsMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry ->
+                        (encodeKey ? URLEncoder.encode(entry.getKey(),
+                                StandardCharsets.US_ASCII) : entry.getKey()) + "=" +
+                                URLEncoder.encode(entry.getValue(), StandardCharsets.US_ASCII))
+                .collect(Collectors.joining("&"));
+    }
+
 }
 

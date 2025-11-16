@@ -20,10 +20,9 @@ import secure_shop.backend.repositories.OrderRepository;
 import secure_shop.backend.repositories.PaymentRepository;
 import secure_shop.backend.service.VNPayService;
 import secure_shop.backend.utils.VNPayUtil;
+import secure_shop.backend.utils.VNPayLogger;
 
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -73,6 +72,15 @@ public class VNPayServiceImpl implements VNPayService {
             BigDecimal orderAmountVND = order.getGrandTotal() != null ? order.getGrandTotal() : BigDecimal.ZERO;
             long amountForVNPay = orderAmountVND.movePointRight(2).longValue(); // amount * 100
 
+            // Log payment request creation
+            VNPayLogger.logPaymentRequest(
+                order.getId().toString(),
+                vnp_TxnRef,
+                amountForVNPay,
+                request.getBankCode(),
+                VNPayUtil.getIpAddress(httpRequest)
+            );
+
             // Build payment parameters
             Map<String, String> vnp_Params = new HashMap<>();
             vnp_Params.put("vnp_Version", vnPayConfig.getVersion());
@@ -110,6 +118,12 @@ public class VNPayServiceImpl implements VNPayService {
 
             String paymentUrl = vnPayConfig.getPaymentUrl() + "?" + queryUrl;
 
+            // Log payment parameters and URL
+            Map<String, String> paramsWithHash = new HashMap<>(vnp_Params);
+            paramsWithHash.put("vnp_SecureHash", vnp_SecureHash);
+            VNPayLogger.logPaymentParams(paramsWithHash, vnPayConfig.getSecretKey());
+            VNPayLogger.logPaymentUrl(paymentUrl);
+
             log.info("Created VNPay payment URL for order: {}, txnRef: {}", order.getId(), vnp_TxnRef);
 
             return VNPayPaymentResponse.builder()
@@ -119,6 +133,7 @@ public class VNPayServiceImpl implements VNPayService {
                     .build();
 
         } catch (Exception e) {
+            VNPayLogger.logError("CREATE PAYMENT URL", e.getMessage(), e);
             log.error("Error creating VNPay payment URL", e);
             return VNPayPaymentResponse.builder()
                     .code("99")
@@ -131,6 +146,8 @@ public class VNPayServiceImpl implements VNPayService {
     @Override
     @Transactional
     public VNPayCallbackRequest processCallback(Map<String, String> params) {
+        // Log callback received
+        VNPayLogger.logCallback(params);
         log.info("Processing VNPay callback with params: {}", params);
 
         String vnp_SecureHash = params.get("vnp_SecureHash");
@@ -171,6 +188,8 @@ public class VNPayServiceImpl implements VNPayService {
     @Override
     @Transactional
     public VNPayIPNResponse processIPN(Map<String, String> params) {
+        // Log IPN received
+        VNPayLogger.logCallback(params);
         log.info("Processing VNPay IPN with params: {}", params);
 
         String vnp_SecureHash = params.get("vnp_SecureHash");
@@ -205,7 +224,7 @@ public class VNPayServiceImpl implements VNPayService {
         }
 
         // Check amount
-        Long vnpAmount = Long.parseLong(vnp_Amount) / 100; // Convert back from VNPay format
+        long vnpAmount = Long.parseLong(vnp_Amount) / 100; // Convert back from VNPay format
         BigDecimal vnpAmountVND = BigDecimal.valueOf(vnpAmount);
         if (order.getGrandTotal() == null || order.getGrandTotal().compareTo(vnpAmountVND) != 0) {
             log.error("Amount mismatch. Order: {}, VNPay: {}", order.getGrandTotal(), vnpAmountVND);
@@ -241,6 +260,9 @@ public class VNPayServiceImpl implements VNPayService {
     public boolean validateSignature(Map<String, String> params, String secureHash) {
         String calculatedHash = VNPayUtil.hashAllFields(params, vnPayConfig.getSecretKey());
         boolean isValid = calculatedHash.equals(secureHash);
+
+        // Log signature verification
+        VNPayLogger.logSignatureVerification(secureHash, calculatedHash, isValid);
 
         log.debug("Signature validation - Calculated: {}, Received: {}, Valid: {}",
                 calculatedHash, secureHash, isValid);
@@ -293,16 +315,42 @@ public class VNPayServiceImpl implements VNPayService {
 
             // Update status based on response code
             if (callback.isSuccess()) {
+                PaymentStatus oldStatus = payment.getStatus();
                 payment.setStatus(PaymentStatus.PAID);
                 payment.setPaidAt(parseVNPayDate(callback.getVnp_PayDate()));
                 order.setPaymentStatus(secure_shop.backend.enums.PaymentStatus.PAID);
                 order.setHasPaid(true);
 
+                // Log payment status update
+                VNPayLogger.logPaymentStatusUpdate(
+                    orderId.toString(),
+                    oldStatus != null ? oldStatus.toString() : "NEW",
+                    "PAID",
+                    "Payment successful via VNPay"
+                );
+
+                // Log success
+                VNPayLogger.logSuccess(
+                    "PAYMENT COMPLETED",
+                    orderId.toString(),
+                    callback.getVnp_TransactionNo(),
+                    callback.getVnp_Amount()
+                );
+
                 log.info("Payment successful for order: {}, transactionId: {}",
                         orderId, callback.getVnp_TransactionNo());
             } else {
+                PaymentStatus oldStatus = payment.getStatus();
                 payment.setStatus(PaymentStatus.FAILED);
                 order.setPaymentStatus(secure_shop.backend.enums.PaymentStatus.FAILED);
+
+                // Log payment status update
+                VNPayLogger.logPaymentStatusUpdate(
+                    orderId.toString(),
+                    oldStatus != null ? oldStatus.toString() : "NEW",
+                    "FAILED",
+                    "Payment failed - Response code: " + callback.getVnp_ResponseCode()
+                );
 
                 log.warn("Payment failed for order: {}, responseCode: {}",
                         orderId, callback.getVnp_ResponseCode());
@@ -312,6 +360,7 @@ public class VNPayServiceImpl implements VNPayService {
             orderRepository.save(order);
 
         } catch (Exception e) {
+            VNPayLogger.logError("UPDATE PAYMENT STATUS", e.getMessage(), e);
             log.error("Error updating payment status", e);
             throw new RuntimeException("Failed to update payment status", e);
         }
