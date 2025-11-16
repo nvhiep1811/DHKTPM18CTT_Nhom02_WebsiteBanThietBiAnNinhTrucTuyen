@@ -45,6 +45,8 @@ public class VNPayUtil {
 
     /**
      * Hash all fields for signature
+     * NOTE: According to VNPay specification, hash data should NOT be URL encoded
+     * Only the query string sent to VNPay needs to be URL encoded
      */
     public static String hashAllFields(Map<String, String> fields, String secretKey) {
         List<String> fieldNames = new ArrayList<>(fields.keySet());
@@ -60,7 +62,8 @@ public class VNPayUtil {
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName);
                 hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+                // DO NOT URL encode for hash data - use raw value
+                hashData.append(fieldValue);
 
                 if (itr.hasNext()) {
                     hashData.append('&');

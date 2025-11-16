@@ -79,3 +79,6 @@ export interface Review {
   verified?: boolean;
   status?: "PENDING" | "APPROVED" | "REJECTED";
 }
+
+// Export VNPay types
+export * from './vnpay';

@@ -17,6 +17,8 @@ import Terms from '../pages/Terms';
 import Privacy from '../pages/Privacy';
 import Checkout from "../pages/Checkout";
 import OrderSuccess from "../pages/OrderSuccess";
+import VNPayReturn from "../pages/VNPayReturn";
+import { VNPAY_RETURN } from './routePaths';
 
 export const publicRoutes = {
   path: "/",
@@ -102,6 +104,14 @@ export const publicRoutes = {
       element: (
         <UserGuard>
           <Profile />
+        </UserGuard>
+      ),
+    },
+    {
+      path: VNPAY_RETURN,
+      element: (
+        <UserGuard>
+          <VNPayReturn />
         </UserGuard>
       ),
     },

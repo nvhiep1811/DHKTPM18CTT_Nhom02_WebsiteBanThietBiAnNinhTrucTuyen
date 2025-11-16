@@ -130,3 +130,6 @@ export const userApi = {
     return response.data;
   },
 };
+
+// VNPay API
+export { vnpayApi } from './vnpayService';
