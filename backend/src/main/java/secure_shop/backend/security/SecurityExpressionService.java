@@ -11,6 +11,7 @@ import secure_shop.backend.repositories.WarrantyRequestRepository;
 import secure_shop.backend.service.OrderService;
 import secure_shop.backend.service.ReviewService;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service("securityService")
@@ -29,17 +30,15 @@ public class SecurityExpressionService {
      * @return true nếu user là admin hoặc owner của order
      */
     public boolean canAccessOrder(UUID orderId, Authentication authentication) {
-        boolean isAdmin = authentication.getAuthorities()
-                .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ADMIN"));
-        if (isAdmin) {
-            return true;
-        }
+        if (!isAuthenticated(authentication)) return false;
+        if (isAdmin(authentication)) return true;
+
+        Optional<UUID> currentUserId = getCurrentUserId(authentication);
+        if (currentUserId.isEmpty()) return false;
 
         try {
-            UUID currentUserId = UUID.fromString(authentication.getName());
             OrderDetailsDTO order = orderService.getOrderDetailsById(orderId);
-            return order.getUser().getId().equals(currentUserId);
+            return order != null && order.getUser() != null && currentUserId.get().equals(order.getUser().getId());
         } catch (Exception e) {
             return false;
         }
@@ -52,40 +51,33 @@ public class SecurityExpressionService {
      * @return true nếu user là admin hoặc owner của order chứa order item
      */
     public boolean canAccessOrderItem(Long orderItemId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
+        if (!isAuthenticated(authentication)) return false;
 
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof CustomUserDetails userDetails)) {
-            return false;
-        }
+        Optional<CustomUserDetails> maybeUserDetails = getCustomUserDetails(authentication);
+        if (maybeUserDetails.isEmpty()) return false;
 
-        // Admin thì được phép toàn bộ
-        boolean isAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (isAdmin) return true;
+        CustomUserDetails userDetails = maybeUserDetails.get();
+        if (isAdmin(userDetails)) return true;
 
         UUID userId = userDetails.getUser().getId();
 
         return orderItemRepository.findById(orderItemId)
                 .map(orderItem -> orderItem.getOrder() != null &&
+                        orderItem.getOrder().getUser() != null &&
                         orderItem.getOrder().getUser().getId().equals(userId))
                 .orElse(false);
     }
 
     public boolean canAccessReview(Long reviewId, Authentication authentication) {
-        boolean isAdmin = authentication.getAuthorities()
-                .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ADMIN"));
-        if (isAdmin) {
-            return true;
-        }
+        if (!isAuthenticated(authentication)) return false;
+        if (isAdmin(authentication)) return true;
+
+        Optional<UUID> currentUserId = getCurrentUserId(authentication);
+        if (currentUserId.isEmpty()) return false;
 
         try {
-            UUID currentUserId = UUID.fromString(authentication.getName());
             UUID reviewUserId = reviewService.getReviewById(reviewId).getUserId();
-            return reviewUserId.equals(currentUserId);
+            return currentUserId.get().equals(reviewUserId);
         } catch (Exception e) {
             return false;
         }
@@ -98,17 +90,14 @@ public class SecurityExpressionService {
      * @return true nếu user là admin hoặc owner của order chứa warranty request
      */
     public boolean canAccessWarrantyRequest(Long warrantyRequestId, Authentication authentication) {
-        boolean isAdmin = authentication.getAuthorities()
-                .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ADMIN"));
-        if (isAdmin) {
-            return true;
-        }
+        if (!isAuthenticated(authentication)) return false;
+        if (isAdmin(authentication)) return true;
+
+        Optional<UUID> currentUserId = getCurrentUserId(authentication);
+        if (currentUserId.isEmpty()) return false;
 
         try {
-            UUID currentUserId = UUID.fromString(authentication.getName());
-            WarrantyRequest warrantyRequest = warrantyRequestRepository.findById(warrantyRequestId)
-                    .orElse(null);
+            WarrantyRequest warrantyRequest = warrantyRequestRepository.findById(warrantyRequestId).orElse(null);
 
             if (warrantyRequest == null || warrantyRequest.getOrderItem() == null
                     || warrantyRequest.getOrderItem().getOrder() == null
@@ -117,9 +106,55 @@ public class SecurityExpressionService {
             }
 
             UUID orderUserId = warrantyRequest.getOrderItem().getOrder().getUser().getId();
-            return orderUserId.equals(currentUserId);
+            return orderUserId.equals(currentUserId.get());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // ---------------------- Helper methods ----------------------
+
+    private boolean isAuthenticated(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated();
+    }
+
+    /**
+     * Consider both possible authority strings to be safe: "ROLE_ADMIN" and "ADMIN"
+     */
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(auth -> {
+                    String grant = auth.getAuthority();
+                    return "ROLE_ADMIN".equals(grant) || "ADMIN".equals(grant);
+                });
+    }
+
+    private boolean isAdmin(CustomUserDetails userDetails) {
+        if (userDetails == null) return false;
+        return userDetails.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String grant = a.getAuthority();
+                    return "ROLE_ADMIN".equals(grant) || "ADMIN".equals(grant);
+                });
+    }
+
+    private Optional<UUID> getCurrentUserId(Authentication authentication) {
+        if (authentication == null) return Optional.empty();
+        try {
+            return Optional.of(UUID.fromString(authentication.getName()));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<CustomUserDetails> getCustomUserDetails(Authentication authentication) {
+        if (authentication == null) return Optional.empty();
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof CustomUserDetails userDetails) {
+            return Optional.of(userDetails);
+        }
+        return Optional.empty();
     }
 }

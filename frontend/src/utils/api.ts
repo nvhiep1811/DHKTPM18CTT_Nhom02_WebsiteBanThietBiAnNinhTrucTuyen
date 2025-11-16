@@ -239,6 +239,8 @@ export const userApi = {
   }
 };
 
+// VNPay API
+export { vnpayApi } from './vnpayService';
 export const ArticleApi = {
   getAll: async (params?: { page?: number; size?: number; active?: boolean }) => {
     const response = await axiosInstance.get("/articles", { params });
