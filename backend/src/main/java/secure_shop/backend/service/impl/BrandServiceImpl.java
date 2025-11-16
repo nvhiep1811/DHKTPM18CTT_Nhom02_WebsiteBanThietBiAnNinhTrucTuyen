@@ -62,6 +62,7 @@ public class BrandServiceImpl implements BrandService {
     }
 
     @Override
+    @Transactional
     public void deleteBrand(Long id) {
         brandRepository.deleteById(id);
     }

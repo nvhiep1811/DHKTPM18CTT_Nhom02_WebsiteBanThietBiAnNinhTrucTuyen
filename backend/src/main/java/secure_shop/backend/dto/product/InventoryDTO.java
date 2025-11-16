@@ -12,5 +12,6 @@ public class InventoryDTO {
     private Integer onHand;
     private Integer reserved;
     private boolean inStock;
+    private UUID productId;
 }
 

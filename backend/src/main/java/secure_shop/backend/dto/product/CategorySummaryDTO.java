@@ -14,4 +14,6 @@ public class CategorySummaryDTO implements Serializable {
     private Long id;
     private String name;
     private String imageUrl;
+    private String description;
+    private Boolean active;
 }
