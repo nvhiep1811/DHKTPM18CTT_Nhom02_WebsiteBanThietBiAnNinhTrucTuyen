@@ -106,6 +106,8 @@ export interface Article {
   adminName?: string;
 }
 
+// Export VNPay types
+export * from './vnpay';
 export interface Discount {
   id: string;
   code: string;

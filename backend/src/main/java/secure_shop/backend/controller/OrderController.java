@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
+import secure_shop.backend.dto.order.request.OrderCreateRequest;
 import secure_shop.backend.service.OrderService;
 
 import java.util.List;
@@ -44,7 +45,7 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody secure_shop.backend.dto.order.request.OrderCreateRequest request,
+    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody OrderCreateRequest request,
                                                 @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getId();
         return ResponseEntity.ok(orderService.createOrder(request, userId));

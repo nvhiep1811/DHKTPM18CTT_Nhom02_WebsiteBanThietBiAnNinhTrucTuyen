@@ -23,6 +23,8 @@ import { toast } from 'react-toastify';
 import { useAppSelector } from '../hooks';
 import { cartService, type CartItem } from '../utils/cartService';
 import { orderApi } from '../utils/api';
+import { vnpayApi } from '../utils/vnpayService';
+import type { VNPayPaymentRequest } from '../types/vnpay';
 
 interface ShippingInfo {
   fullName: string;
@@ -36,7 +38,7 @@ interface ShippingInfo {
 }
 
 type ShippingMethod = 'standard' | 'express';
-type PaymentMethod = 'cod' | 'bank_transfer' | 'e_wallet';
+type PaymentMethod = 'cod' | 'bank_transfer' | 'vnpay';
 
 const Checkout: React.FC = () => {
   const location = useLocation();
@@ -234,7 +236,40 @@ const Checkout: React.FC = () => {
     const createdOrder = await orderApi.create(orderRequest);
 
     // ========================================
-    // 3. XỬ LÝ RESPONSE - Lấy thông tin từ backend
+    // 3. XỬ LÝ THANH TOÁN VNPAY
+    // ========================================
+    if (paymentMethod === 'vnpay') {
+      try {
+        const vnpayRequest: VNPayPaymentRequest = {
+          orderId: createdOrder.id,
+          amount: Math.round(calculateTotal()), // VND
+          orderInfo: `Thanh toan don hang ${createdOrder.id.substring(0, 8)}`,
+          language: 'vn'
+        };
+
+        // Gọi API tạo payment URL
+        const vnpayResponse = await vnpayApi.createPaymentUrl(vnpayRequest);
+
+        if (vnpayResponse.code === '00' && vnpayResponse.paymentUrl) {
+          toast.success('Đang chuyển đến cổng thanh toán VNPay...');
+          console.log('Redirecting to VNPay URL:', vnpayResponse.paymentUrl);
+          
+          // Redirect đến VNPay
+          window.location.href = vnpayResponse.paymentUrl;
+          return; // Dừng execution
+        } else {
+          toast.error(vnpayResponse.message || 'Không thể tạo URL thanh toán');
+          return;
+        }
+      } catch (error: any) {
+        console.error('Error creating VNPay payment:', error);
+        toast.error('Lỗi khi tạo thanh toán VNPay. Vui lòng thử lại!');
+        return;
+      }
+    }
+
+    // ========================================
+    // 4. XỬ LÝ RESPONSE - Lấy thông tin từ backend (COD/BANK_TRANSFER)
     // ========================================
     
     // Tạo orderData để hiển thị ở trang success
@@ -702,22 +737,22 @@ const Checkout: React.FC = () => {
                 </label>
 
                 <label className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  paymentMethod === 'e_wallet' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
+                  paymentMethod === 'vnpay' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
                 }`}>
                   <div className="flex items-center gap-3">
                     <input
                       type="radio"
                       name="payment"
-                      value="e_wallet"
-                      checked={paymentMethod === 'e_wallet'}
+                      value="vnpay"
+                      checked={paymentMethod === 'vnpay'}
                       onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                       className="w-4 h-4 text-purple-600"
                     />
                     <div className="flex items-center gap-2">
-                      <Wallet className="h-5 w-5 text-purple-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Ví điện tử</p>
-                                                <p className="text-sm text-gray-600">Thanh toán qua Momo, ZaloPay hoặc VNPay</p>
+                      <Wallet className="h-5 w-5 text-blue-600" />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">Thanh toán qua VNPay</p>
+                        <p className="text-sm text-gray-600">Thanh toán qua ví điện tử, thẻ ATM, thẻ quốc tế</p>
                       </div>
                     </div>
                   </div>

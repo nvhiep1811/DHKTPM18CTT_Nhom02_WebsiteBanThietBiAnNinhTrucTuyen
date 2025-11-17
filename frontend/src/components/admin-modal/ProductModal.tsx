@@ -218,6 +218,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         specifications: formData.specifications,
         rating: formData.rating,
         reviewCount: formData.reviewCount,
+        availableStock: formData.availableStock,
         reviews: product?.reviews || [],
         ...(isEditing && {
           createdAt: product.createdAt,
