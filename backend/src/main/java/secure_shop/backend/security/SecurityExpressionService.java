@@ -8,6 +8,7 @@ import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.entities.WarrantyRequest;
 import secure_shop.backend.repositories.OrderItemRepository;
 import secure_shop.backend.repositories.WarrantyRequestRepository;
+import secure_shop.backend.repositories.OrderRepository;
 import secure_shop.backend.service.OrderService;
 import secure_shop.backend.service.ReviewService;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class SecurityExpressionService {
 
     private final OrderService orderService;
+    private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ReviewService reviewService;
     private final WarrantyRequestRepository warrantyRequestRepository;
@@ -36,12 +38,10 @@ public class SecurityExpressionService {
         Optional<UUID> currentUserId = getCurrentUserId(authentication);
         if (currentUserId.isEmpty()) return false;
 
-        try {
-            OrderDetailsDTO order = orderService.getOrderDetailsById(orderId);
-            return order != null && order.getUser() != null && currentUserId.get().equals(order.getUser().getId());
-        } catch (Exception e) {
-            return false;
-        }
+        return orderRepository.findById(orderId)
+                .map(order -> order.getUser() != null && order.getUser().getId() != null
+                        && currentUserId.get().equals(order.getUser().getId()))
+                .orElse(false);
     }
 
     /**
