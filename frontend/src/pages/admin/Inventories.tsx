@@ -16,8 +16,6 @@ export const loadData = async () => {
       InventoryApi.getAll(),
       productApi.getAll({ page: 0, size: 100 })
     ]);
-    console.log('Products response:', productsResponse);
-    console.log('Inventories response:', inventories);
     const products = productsResponse?.content || [];
     return { inventories, products };
   } catch (error) {

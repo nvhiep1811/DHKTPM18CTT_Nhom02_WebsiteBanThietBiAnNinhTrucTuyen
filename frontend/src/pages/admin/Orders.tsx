@@ -3,17 +3,22 @@ import { Eye, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react'
 import type { Order } from '../../types/types';
 import { orderApi } from '../../utils/api';
 import OrderDetailsModal from '../../components/admin-modal/OrderDetailsModal';
+import Pagination from '../../components/Pagination';
 
 type Props = { 
-  data?: Order[];
+  data?: { content: Order[]; page: { totalPages: number; totalElements: number; number: number; size: number } };
   onReload?: () => void;
+  onPageChange?: (page: number, size: number) => void;
 };
 
-const Orders: React.FC<Props> = ({ data, onReload }) => {
-  const orders = data || [];
+const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
+  const orders = data?.content || [];
+  const pagination = data?.page || { totalPages: 0, totalElements: 0, number: 0, size: 20 };
+  
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const handleViewDetails = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -25,24 +30,38 @@ const Orders: React.FC<Props> = ({ data, onReload }) => {
     setSelectedOrderId(null);
   };
 
-  // Filter orders based on search term (customer name or product name)
+  const handlePageChange = (page: number) => {
+    onPageChange?.(page, pagination.size);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    onPageChange?.(0, size);
+  };
+
+  // Filter and sort orders
   const filteredOrders = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return orders;
+    let filtered = orders;
+
+    // Filter by status
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter((order: Order) => order.status === statusFilter);
     }
 
-    const searchLower = searchTerm.toLowerCase().trim();
-    
-    return orders.filter((order: Order) => {
-      // Search by customer name
-      const customerNameMatch = order.user.name.toLowerCase().includes(searchLower);
-      
-      // Search by order ID
-      const orderIdMatch = order.id.toLowerCase().includes(searchLower);
-      
-      return customerNameMatch || orderIdMatch;
-    });
-  }, [orders, searchTerm]);
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((order: Order) => {
+        const customerNameMatch = order.user.name.toLowerCase().includes(searchLower);
+        const orderIdMatch = order.id.toLowerCase().includes(searchLower);
+        return customerNameMatch || orderIdMatch;
+      });
+    }
+
+    // Sort by created date (newest first)
+    return filtered.sort((a: Order, b: Order) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [orders, searchTerm, statusFilter]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: any = {
@@ -79,12 +98,17 @@ const Orders: React.FC<Props> = ({ data, onReload }) => {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent w-80"
             />
           </div>
-          <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-            <option>Tất cả trạng thái</option>
-            <option>Chờ xử lý</option>
-            <option>Đang xử lý</option>
-            <option>Hoàn thành</option>
-            <option>Đã hủy</option>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="PENDING">Chờ xử lý</option>
+            <option value="WAITING_FOR_DELIVERY">Chờ giao hàng</option>
+            <option value="IN_TRANSIT">Đang giao</option>
+            <option value="DELIVERED">Đã giao</option>
+            <option value="CANCELLED">Đã hủy</option>
           </select>
         </div>
       </div>
@@ -166,6 +190,16 @@ const Orders: React.FC<Props> = ({ data, onReload }) => {
         </table>
       </div>
 
+      {/* Pagination */}
+      <Pagination
+        page={pagination.number}
+        totalPages={pagination.totalPages}
+        totalElements={pagination.totalElements}
+        pageSize={pagination.size}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
       {/* Order Details Modal */}
       {selectedOrderId && (
         <OrderDetailsModal
@@ -180,14 +214,12 @@ const Orders: React.FC<Props> = ({ data, onReload }) => {
 
 export default Orders;
 
-export async function loadData() {
+export async function loadData(page: number = 0, size: number = 20) {
   try {
-    const response = await orderApi.getAll();
-    const orders = response.content || [];
-    
-    return orders;
+    const response = await orderApi.getAll({ page, size });
+    return response;
   } catch (error) {
     console.error('Failed to load orders:', error);
-    return [];
+    return { content: [], page: { totalPages: 0, totalElements: 0, number: 0, size: 20 } };
   }
 }

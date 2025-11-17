@@ -18,7 +18,7 @@ import {
 // Type for admin modules
 interface AdminModule {
   default: React.FC<any>;
-  loadData?: () => Promise<any>;
+  loadData?: (page?: number, size?: number) => Promise<any>;
 }
 
 type TabKey =
@@ -53,19 +53,38 @@ const Admin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [LoadedComponent, setLoadedComponent] = useState<React.FC<any> | null>(null);
   const [data, setData] = useState<any>(null);
-  const [currentLoadData, setCurrentLoadData] = useState<(() => Promise<any>) | null>(null);
+  const [currentLoadData, setCurrentLoadData] = useState<((page?: number, size?: number) => Promise<any>) | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+
+  const handlePageChange = async (page: number, size: number) => {
+    setCurrentPage(page);
+    setPageSize(size);
+    
+    if (currentLoadData) {
+      try {
+        setLoading(true);
+        const newData = await currentLoadData(page, size);
+        setData(newData);
+      } catch (error) {
+        console.error('Error loading page:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   const reloadCurrentTab = async () => {
-    if (!currentLoadData) return;
-    
-    try {
+    if (currentLoadData) {
       setLoading(true);
-      const newData = await currentLoadData();
-      setData(newData);
-    } catch (error) {
-      console.error('Error reloading data:', error);
-    } finally {
-      setLoading(false);
+      try {
+        const newData = await currentLoadData(currentPage, pageSize);
+        setData(newData);
+      } catch (error) {
+        console.error('Error reloading:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -76,6 +95,8 @@ const Admin: React.FC = () => {
       setLoading(true);
       setData(null);
       setLoadedComponent(null);
+      setCurrentPage(0); // Reset page when switching tabs
+      setPageSize(20); // Reset page size
 
       try {
         switch (tab) {
@@ -110,8 +131,8 @@ const Admin: React.FC = () => {
             const mod = await import('./admin/Orders') as AdminModule;
             if (!mounted) return;
             setLoadedComponent(() => mod.default);
-            setCurrentLoadData(() => mod.loadData || (() => Promise.resolve(null)));
-            const d = await (mod.loadData?.() ?? null);
+            setCurrentLoadData(() => (page = 0, size = 20) => mod.loadData?.(page, size) || Promise.resolve(null));
+            const d = await (mod.loadData?.(currentPage, pageSize) ?? null);
             setData(d);
             break;
           }
@@ -245,7 +266,11 @@ const Admin: React.FC = () => {
 
               {!loading && LoadedComponent && (
                 <div className="animate-fadeIn">
-                  <LoadedComponent data={data} onReload={reloadCurrentTab} />
+                  <LoadedComponent 
+                    data={data} 
+                    onReload={reloadCurrentTab}
+                    onPageChange={activeTab === 'orders' ? handlePageChange : undefined}
+                  />
                 </div>
               )}
 

@@ -130,8 +130,8 @@ export const orderApi = {
     return response.data;
   },
   // Admin: Lấy tất cả đơn hàng
-  getAll: async () => {
-    const response = await api.get("/orders");
+  getAll: async (params?: { page?: number; size?: number }) => {
+    const response = await api.get("/orders", { params });
     return response.data;
   },
   // Admin: Cập nhật đơn hàng
