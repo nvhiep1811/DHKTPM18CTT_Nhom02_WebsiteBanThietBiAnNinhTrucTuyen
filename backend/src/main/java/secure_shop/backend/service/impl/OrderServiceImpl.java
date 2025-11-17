@@ -20,11 +20,14 @@ import secure_shop.backend.mapper.OrderMapper;
 import secure_shop.backend.repositories.OrderRepository;
 import secure_shop.backend.repositories.ProductRepository;
 import secure_shop.backend.service.OrderService;
+import secure_shop.backend.service.EmailService;
 import secure_shop.backend.repositories.InventoryRepository;
 import secure_shop.backend.service.InventoryService;
 
 import java.time.Instant;
 import java.util.List;
+import secure_shop.backend.repositories.UserRepository;
+ 
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
@@ -39,6 +42,9 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
+    
 
     @Override
     public OrderDTO createOrder(OrderCreateRequest request, UUID userId) {
@@ -61,22 +67,19 @@ public class OrderServiceImpl implements OrderService {
             inventoryService.reserveStock(inv.getId(), itemReq.getQuantity());
         }
 
-        // Build order entity
-        Order order = Order.builder()
-                .shippingFee(request.getShippingFee())
-                .shippingAddress(request.getShippingAddress())
-                .build();
-
-        // set user (only id) if provided
-        if (userId != null) {
-            User user = new User();
-            user.setId(userId);
-            order.setUser(user);
-        } else if (request.getUserId() != null) {
-            User user = new User();
-            user.setId(request.getUserId());
-            order.setUser(user);
+        // Fetch full user entity (avoid transient with only id so email sending works)
+        User user = null;
+        UUID effectiveUserId = userId != null ? userId : request.getUserId();
+        if (effectiveUserId != null) {
+            user = userRepository.findById(effectiveUserId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", effectiveUserId));
         }
+        // Build order entity (single creation)
+        Order order = Order.builder()
+            .shippingFee(request.getShippingFee())
+            .shippingAddress(request.getShippingAddress())
+            .user(user)
+            .build();
 
        // create order items and attach to order
         for (OrderItemRequest itemReq : request.getItems()) {
@@ -98,6 +101,12 @@ public class OrderServiceImpl implements OrderService {
 
         // Persist order (totals will be calculated by @PrePersist)
         Order savedOrder = orderRepository.save(order);
+        // Gửi email xác nhận đơn hàng ngay sau khi lưu
+        try {
+            emailService.sendOrderConfirmationEmail(savedOrder);
+        } catch (Exception ex) {
+            // không chặn đơn hàng; có thể thêm log nếu cần
+        }
         return orderMapper.toDTO(savedOrder);
     }
 

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Xác nhận đơn hàng</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.55;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background: #f3f4f6;
+        }
+
+        .wrapper {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 28px 32px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .sub-header {
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: #e0e7ff;
+        }
+
+        .content {
+            padding: 32px;
+            background: #f9fafb;
+        }
+
+        h2.section {
+            font-size: 16px;
+            margin: 32px 0 12px;
+            color: #1f2937;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+        }
+
+        p {
+            margin: 0 0 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        thead th {
+            background: #eef2ff;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 10px;
+            text-align: left;
+        }
+
+        tbody td {
+            padding: 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        tfoot td {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        .total-row td {
+            font-weight: 600;
+            background: #f1f5f9;
+        }
+
+        .grand-total td {
+            font-size: 14px;
+            font-weight: 700;
+            background: #e0f2fe;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 14px;
+            letter-spacing: .5px;
+            background: #10b981;
+            color: #fff;
+        }
+
+        .badge.unpaid {
+            background: #dc3545;
+        }
+
+        .status-line {
+            font-size: 13px;
+            color: #374151;
+            background: #e0e7ff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .address-box {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .note-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 14px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #92400e;
+            margin: 20px 0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .info-item {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 12px;
+        }
+
+        .info-item h3 {
+            margin: 0 0 4px;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .cta {
+            text-align: center;
+            margin: 34px 0 10px;
+        }
+
+        .cta a {
+            background: #7c3aed;
+            color: #fff;
+            padding: 14px 34px;
+            border-radius: 10px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-block;
+            box-shadow: 0 3px 10px rgba(124, 58, 237, 0.25);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 28px 12px 10px;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .footer a {
+            color: #7c3aed;
+            text-decoration: none;
+        }
+
+        .sku {
+            color: #6b7280;
+            font-size: 11px;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .price-sm {
+            font-size: 12px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .line-through {
+            text-decoration: line-through;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        .highlight {
+            color: #7c3aed;
+            font-weight: 600;
+        }
+
+        @media (max-width:520px) {
+            .content {
+                padding: 24px;
+            }
+
+            .header {
+                padding: 24px;
+            }
+
+            .cta a {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <div class="header">
+                <h1>🛒 Đơn hàng #<span th:text="${orderId}">ID</span></h1>
+                <div class="sub-header">Cảm ơn bạn đã mua sắm tại SecureShop</div>
+            </div>
+            <div class="content">
+                <p>Xin chào <strong th:text="${customerName}">Khách hàng</strong>,</p>
+                <p>Đơn hàng của bạn đã được tạo lúc <strong th:text="${createdAt}">time</strong>.</p>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <h3>Trạng thái đơn</h3>
+                        <div class="status-line">Trạng thái: <span class="highlight"
+                                th:text="${orderStatus}">PENDING</span></div>
+                    </div>
+                    <div class="info-item">
+                        <h3>Thanh toán</h3>
+                        <div>Phương thức: <span th:text="${paymentMethod}">COD</span></div>
+                        <div>Trạng thái: <span th:text="${paymentStatus}">UNPAID</span> - <span class="badge"
+                                th:classappend="${isPaidLabel == 'UNPAID'} ? ' unpaid'" th:text="${hasPaid}">CHƯA THANH
+                                TOÁN</span></div>
+                    </div>
+                </div>
+
+                <h2 class="section">Sản phẩm</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:45%">Sản phẩm</th>
+                            <th style="width:10%">SL</th>
+                            <th style="width:20%">Đơn giá</th>
+                            <th style="width:25%">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="it : ${items}">
+                            <td>
+                                <span th:text="${it.name}">Tên SP</span>
+                                <span class="sku" th:if="${it.sku != null}" th:text="'SKU: ' + ${it.sku}">SKU</span>
+                            </td>
+                            <td th:text="${it.quantity}">1</td>
+                            <td>
+                                <span class="price-sm"
+                                    th:text="${#numbers.formatDecimal(it.unitPrice, 0, 'COMMA', 2, 'POINT')}"></span>
+                            </td>
+                            <td th:text="${#numbers.formatDecimal(it.lineTotal, 0, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="3">Tạm tính</td>
+                            <td th:text="${subTotal}">0</td>
+                        </tr>
+                        <tr class="total-row" th:if="${discountTotal != null && discountTotal != '₫0'}">
+                            <td colspan="3">Giảm giá</td>
+                            <td th:text="${discountTotal}">0</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td colspan="3">Phí vận chuyển</td>
+                            <td th:text="${shippingFee}">0</td>
+                        </tr>
+                        <tr class="grand-total">
+                            <td colspan="3">Tổng thanh toán</td>
+                            <td th:text="${grandTotal}">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <h2 class="section">Địa chỉ giao hàng</h2>
+                <div class="address-box" th:text="${shippingAddress}">Địa chỉ</div>
+
+                <div class="note-box">
+                    <strong>ℹ️ Lưu ý:</strong> Nếu có sai sót vui lòng phản hồi lại email này hoặc liên hệ hỗ trợ để
+                    được điều chỉnh kịp thời.
+                </div>
+
+                <div class="cta">
+                    <a th:href="${orderLink}" target="_blank">Xem đơn hàng của bạn</a>
+                </div>
+                <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:0">Nếu nút không hoạt động hãy copy
+                    link: <span style="word-break:break-all" th:text="${orderLink}">order-link</span></p>
+
+                <p style="font-size:13px;color:#6b7280;margin-top:30px;">Trân trọng,<br>Đội ngũ SecureShop</p>
+            </div>
+            <div class="footer">
+                © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> SecureShop. Mọi quyền được
+                bảo lưu.<br>
+                Cần hỗ trợ? Liên hệ <a href="mailto:support@myshop.com">support@myshop.com</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
