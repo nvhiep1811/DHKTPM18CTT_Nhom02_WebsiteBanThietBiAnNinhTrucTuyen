@@ -19,6 +19,8 @@ import Checkout from "../pages/Checkout";
 import OrderSuccess from "../pages/OrderSuccess";
 import VNPayReturn from "../pages/VNPayReturn";
 import { VNPAY_RETURN } from './routePaths';
+import Orders from "../pages/Orders";
+import OrderDetail from "../pages/OrderDetail";
 
 export const publicRoutes = {
   path: "/",
@@ -96,6 +98,22 @@ export const publicRoutes = {
       element: (
         <UserGuard>
           <OrderSuccess />
+        </UserGuard>
+      ),
+    },
+    {
+      path: "orders",
+      element: (
+        <UserGuard>
+          <Orders />
+        </UserGuard>
+      ),
+    },
+    {
+      path: "orders/:id",
+      element: (
+        <UserGuard>
+          <OrderDetail />
         </UserGuard>
       ),
     },
