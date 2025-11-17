@@ -89,7 +89,7 @@ const Login: React.FC = () => {
         navigate(user.role === "ADMIN" ? "/admin" : "/");
       }, 0);
 
-    } catch (error: any) {
+    } catch {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("tokenExpiresAt");
     } finally {

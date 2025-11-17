@@ -71,7 +71,7 @@ const Users: React.FC<Props> = ({ data, onReload }) => {
         toast.success(`Đã kích hoạt tài khoản của ${user.name}`);
       }
       onReload?.();
-    } catch (error) {
+    } catch {
       toast.error('Có lỗi xảy ra khi thay đổi trạng thái tài khoản');
     }
   };
@@ -88,7 +88,7 @@ const Users: React.FC<Props> = ({ data, onReload }) => {
       toast.success(`Đã khóa tài khoản của ${confirmDialog.user.name}`);
       setConfirmDialog({ open: false });
       onReload?.();
-    } catch (error) {
+    } catch {
       toast.error('Có lỗi xảy ra khi xóa tài khoản');
     }
   };

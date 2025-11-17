@@ -34,7 +34,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/refresh",
-            "/api/auth/logout",
             "/api/auth/verify-email",
             "/api/auth/resend-verification",
             "/api/auth/forgot-password",
@@ -88,24 +87,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            log.debug("OPTIONS request detected - skipping JWT authentication");
             chain.doFilter(request, response);
             return;
         }
 
         String path = request.getRequestURI();
-        log.debug("JwtAuthFilter processing path={}, isPublic={}", path, isPublicEndpoint(path));
+        log.debug("Processing path: {}", path);
 
-        if (isPublicEndpoint(path) && "GET".equalsIgnoreCase(request.getMethod())) {
-            log.debug("Public endpoint: {} - skipping JWT authentication", path);
+        // CẢI TIẾN: PUBLIC ENDPOINT = TẤT CẢ METHOD
+        if (isPublicEndpoint(path)) {
+            log.debug("Public endpoint - skipping JWT: {}", path);
             chain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader("Authorization");
-
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.debug("No Bearer token found in Authorization header for path: {}", path);
+            log.debug("No Bearer token - continuing without auth");
             chain.doFilter(request, response);
             return;
         }
@@ -114,41 +112,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             DecodedJWT decoded = jwtService.verify(token);
-
             String tokenType = decoded.getClaim("type").asString();
             if ("refresh".equals(tokenType)) {
-                log.warn("Refresh token used as access token");
-                chain.doFilter(request, response);
+                log.warn("Refresh token used in access context");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"error\": \"Use refresh endpoint\"}");
                 return;
             }
 
-            String userId = decoded.getSubject();
-            log.debug("Token verified for user ID: {}", userId);
+            UUID userId = UUID.fromString(decoded.getSubject());
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-            Optional<User> userOpt = userService.findById(UUID.fromString(userId));
-            if (userOpt.isEmpty()) {
-                log.warn("User not found for token subject: {}", userId);
-                chain.doFilter(request, response);
-                return;
-            }
-
-            User user = userOpt.get();
             CustomUserDetails userDetails = new CustomUserDetails(user);
-
-            UsernamePasswordAuthenticationToken authentication =
+            UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Authenticated user {} set into SecurityContext", user.getEmail());
-            } else {
-                log.debug("SecurityContext already contains authentication, skipping set");
-            }
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            log.debug("Authenticated user: {}", user.getEmail());
 
         } catch (Exception e) {
-            log.error("JWT validation failed for path {}: {}", path, e.getMessage());
+            log.error("JWT authentication failed: {}", e.getMessage());
             SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Invalid token\"}");
+            return; // NGĂN CHẶN TIẾP TỤC
         }
 
         chain.doFilter(request, response);

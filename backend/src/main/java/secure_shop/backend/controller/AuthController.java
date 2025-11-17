@@ -161,7 +161,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("None")
-                .path("/auth/refresh")
+                .path("/api/auth/refresh")
                 .maxAge(Duration.ofSeconds(jwtService.getRefreshExpSeconds()))
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
@@ -176,7 +176,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("None")
-                .path("/auth/refresh")
+                .path("/api/auth/refresh")
                 .maxAge(0)
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
@@ -218,10 +218,11 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
     }
 
+    // forgot-password
     @PostMapping("/forgot-password")
-    public String forgotPassword(@RequestParam String email) {
+    public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String email) {
         resetService.sendResetLink(email);
-        return "Liên kết khôi phục đã được gửi đến email của bạn.";
+        return ResponseEntity.ok(Map.of("message", "Liên kết khôi phục đã được gửi đến email của bạn."));
     }
 
     @GetMapping("/verify-token")

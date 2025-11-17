@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { productApi } from "../utils/api";
 import type { ProductSummary } from "../types/types";
 import ProductCard from "../components/ProductCard";
+import { cartService } from "../utils/cartService";
 
 const OrderSuccess: React.FC = () => {
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -24,6 +25,11 @@ const OrderSuccess: React.FC = () => {
     };
     fetchProducts();
   }, []);
+
+  const handleAddToCart = async (product: ProductSummary) => {
+    const success = await cartService.addToCart(product);
+    if (success) window.dispatchEvent(new Event("cartUpdated"));
+  };
 
   // === Tính thời gian giao hàng ===
   const deliveryDate = new Date();
@@ -93,7 +99,7 @@ const OrderSuccess: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                 >
-                  <ProductCard product={product} onAddToCart={() => {}} />
+                  <ProductCard product={product} onAddToCart={() => handleAddToCart(product)} />
                 </motion.div>
               ))}
             </div>

@@ -16,10 +16,10 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cartService } from "../utils/cartService";
-import { useAppDispatch, useAppSelector } from "../hooks";
-import { logout } from "../stores/authSlice";
+import { useAppSelector } from "../hooks";
 import { productApi } from "../utils/api";
 import type { ProductSummary } from "../types/types";
+import { authService } from "../utils/authService";
 
 const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,17 +36,15 @@ const Header: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleUserMenu = () => setIsUserMenuOpen(!isUserMenuOpen);
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await authService.logout();
     setIsUserMenuOpen(false);
     setIsMobileMenuOpen(false);
-    navigate("/");
   };
 
   const popularSearches = ["Camera 4K", "Khóa vân tay", "Báo động", "Chuông cửa"];

@@ -1,5 +1,5 @@
 import { toast } from "react-toastify";
-import axiosInstance from "./axiosConfig";
+import { api } from "./axiosConfig";
 
 export interface CartItem {
   productId: string;
@@ -20,10 +20,9 @@ class CartService {
   async getCart(): Promise<CartItem[]> {
     if (this.isAuthenticated()) {
       try {
-        const { data } = await axiosInstance.get<CartItem[]>("/cart");
+        const { data } = await api.get<CartItem[]>("/cart");
         return data;
       } catch {
-        toast.error("Lỗi! Không thể tải giỏ hàng.");
         return [];
       }
     } else {
@@ -90,7 +89,8 @@ class CartService {
           quantity = canAdd;
         }
 
-        await axiosInstance.post("/cart/add", {
+        await api.post("/cart/add", {
+          // Sửa: dùng api
           productId: product.id,
           name: product.name,
           price: product.price,
@@ -179,7 +179,8 @@ class CartService {
 
     if (this.isAuthenticated()) {
       try {
-        await axiosInstance.put("/cart/update", {
+        await api.put("/cart/update", {
+          // Sửa: dùng api
           productId,
           quantity,
         });
@@ -202,7 +203,7 @@ class CartService {
   async removeItem(productId: string): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
-        await axiosInstance.delete(`/cart/remove/${productId}`);
+        await api.delete(`/cart/remove/${productId}`); // Sửa: dùng api
         return true;
       } catch {
         toast.error("Không thể xóa sản phẩm khỏi giỏ hàng.");
@@ -220,7 +221,7 @@ class CartService {
   async clearCart(): Promise<boolean> {
     if (this.isAuthenticated()) {
       try {
-        await axiosInstance.delete("/cart/clear");
+        await api.delete("/cart/clear"); // Sửa: dùng api
         return true;
       } catch {
         toast.error("Lỗi! Không thể xóa toàn bộ giỏ hàng.");
@@ -241,7 +242,7 @@ class CartService {
     if (items.length === 0) return;
 
     try {
-      await axiosInstance.post("/cart/merge", { items });
+      await api.post("/cart/merge", { items }); // Sửa: dùng api
       localStorage.removeItem("guestCart");
       toast.success("Đã hợp nhất giỏ hàng!");
     } catch {

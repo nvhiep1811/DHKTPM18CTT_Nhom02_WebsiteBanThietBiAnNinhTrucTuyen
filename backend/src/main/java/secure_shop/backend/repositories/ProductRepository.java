@@ -56,9 +56,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
       AND (:minPrice IS NULL OR p.price >= :minPrice)
       AND (:maxPrice IS NULL OR p.price <= :maxPrice)
       AND (:inStock IS NULL OR 
-           (CASE WHEN :inStock = true THEN (i.onHand - i.reserved) > 0 
-                 ELSE (i.onHand - i.reserved) <= 0 
-           END))
+           (:inStock = true AND (i.onHand - i.reserved) > 0) OR 
+           (:inStock = false AND (i.onHand - i.reserved) <= 0))
       AND LOWER(p.name) LIKE LOWER(CONCAT('%', COALESCE(:keyword, ''), '%'))
     """)
     Page<ProductSummaryDTO> filterProducts(Boolean active,

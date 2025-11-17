@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import secure_shop.backend.enums.PaymentMethod;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -30,4 +31,6 @@ public class OrderCreateRequest implements Serializable {
     private Map<String, String> shippingAddress;
 
     private UUID userId;
+
+    private PaymentMethod paymentMethod;
 }

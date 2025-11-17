@@ -10,8 +10,6 @@ public interface VNPayService {
 
     String createPaymentUrl(UUID orderId, String ipAddress);
 
-    boolean processCallback(Map<String, String> params);
-
     VNPayCallbackResponse processCallbackWithDetails(Map<String, String> params);
 
 //    VNPayIPNResponse processIPN(Map<String, String> params);

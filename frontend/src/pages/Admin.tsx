@@ -181,7 +181,6 @@ const Admin: React.FC = () => {
           default:
             break;
         }
-      } catch (err) {
       } finally {
         if (mounted) setLoading(false);
       }

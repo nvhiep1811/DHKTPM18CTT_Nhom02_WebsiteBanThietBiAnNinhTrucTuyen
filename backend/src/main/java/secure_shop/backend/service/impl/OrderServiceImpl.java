@@ -14,6 +14,7 @@ import secure_shop.backend.entities.OrderItem;
 import secure_shop.backend.entities.Product;
 import secure_shop.backend.entities.User;
 import secure_shop.backend.enums.OrderStatus;
+import secure_shop.backend.enums.PaymentMethod;
 import secure_shop.backend.exception.BusinessRuleViolationException;
 import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.mapper.OrderMapper;
@@ -101,11 +102,13 @@ public class OrderServiceImpl implements OrderService {
 
         // Persist order (totals will be calculated by @PrePersist)
         Order savedOrder = orderRepository.save(order);
-        // Gửi email xác nhận đơn hàng ngay sau khi lưu
-        try {
-            emailService.sendOrderConfirmationEmail(savedOrder);
-        } catch (Exception ex) {
-            // không chặn đơn hàng; có thể thêm log nếu cần
+
+        if (request.getPaymentMethod() == null ||
+                request.getPaymentMethod() == PaymentMethod.COD) {
+            try {
+                emailService.sendOrderConfirmationEmail(savedOrder);
+            } catch (Exception ex) {
+            }
         }
         return orderMapper.toDTO(savedOrder);
     }

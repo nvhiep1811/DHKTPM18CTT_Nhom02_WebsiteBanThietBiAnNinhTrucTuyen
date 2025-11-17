@@ -1,15 +1,17 @@
 import axios from "axios";
-import axiosInstance from "./axiosConfig";
+import { api, publicApi } from "./axiosConfig";
 
 interface AuthResponse {
   accessToken: string;
   expiresIn: number;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:12345/api";
+
 export const authService = {
   // Login
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await axiosInstance.post<AuthResponse>("/auth/login", {
+    const response = await api.post<AuthResponse>("/auth/login", {
       email,
       password,
     });
@@ -19,13 +21,12 @@ export const authService = {
   // Logout
   async logout(): Promise<void> {
     try {
-      await axiosInstance.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
+      await api.post("/auth/logout");
     } finally {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("tokenExpiresAt");
-      window.location.href = "/login";
+      localStorage.removeItem("user");
+      window.location.href = "/";
     }
   },
 
@@ -33,9 +34,7 @@ export const authService = {
   async refreshToken(): Promise<string | null> {
     try {
       const response = await axios.post<AuthResponse>(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:12345/api"
-        }/auth/refresh`,
+        `${API_URL}/auth/refresh`,
         {},
         { withCredentials: true }
       );
@@ -48,7 +47,7 @@ export const authService = {
       );
 
       return accessToken;
-    } catch (error) {
+    } catch {
       await this.logout();
       return null;
     }
@@ -73,26 +72,29 @@ export const authService = {
   },
 
   async changePassword(currentPassword: string, newPassword: string) {
-    return await axiosInstance.post("/auth/change-password", {
+    return await api.post("/auth/change-password", {
       currentPassword,
       newPassword,
     });
   },
 
   async verifyToken(token: string) {
-    return await axiosInstance.get("/auth/verify-token", {
+    return await publicApi.get("/auth/verify-token", {
+      // Sửa: dùng publicApi vì public
       params: { token },
     });
   },
 
   async forgotPassword(email: string) {
-    return await axiosInstance.post("/auth/forgot-password", null, {
+    return await publicApi.post("/auth/forgot-password", null, {
+      // Sửa: dùng publicApi
       params: { email },
     });
   },
 
   async resetPassword(token: string, newPassword: string) {
-    return await axiosInstance.post("/auth/reset-password", null, {
+    return await publicApi.post("/auth/reset-password", null, {
+      // Sửa: dùng publicApi
       params: {
         token,
         newPassword,

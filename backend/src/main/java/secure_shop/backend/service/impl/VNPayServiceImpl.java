@@ -16,6 +16,7 @@ import secure_shop.backend.mapper.OrderMapper;
 import secure_shop.backend.mapper.PaymentMapper;
 import secure_shop.backend.repositories.OrderRepository;
 import secure_shop.backend.repositories.PaymentRepository;
+import secure_shop.backend.service.EmailService;
 import secure_shop.backend.service.VNPayService;
 
 import java.math.BigDecimal;
@@ -35,6 +36,7 @@ public class VNPayServiceImpl implements VNPayService {
     private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
     private final PaymentMapper paymentMapper;
+    private final EmailService emailService;
 
     @Transactional
     public String createPaymentUrl(UUID orderId, String ipAddress) throws UnsupportedOperationException{
@@ -126,75 +128,6 @@ public class VNPayServiceImpl implements VNPayService {
 
     @Override
     @Transactional
-    public boolean processCallback(Map<String, String> params) {
-        String vnpSecureHash = params.get("vnp_SecureHash");
-        params.remove("vnp_SecureHash");
-        params.remove("vnp_SecureHashType");
-
-        // Build hash data
-        List<String> fieldNames = new ArrayList<>(params.keySet());
-        Collections.sort(fieldNames);
-
-        StringBuilder hashData = new StringBuilder();
-        for (String fieldName : fieldNames) {
-            String fieldValue = params.get(fieldName);
-            if (fieldValue != null && !fieldValue.isEmpty()) {
-                hashData.append(fieldName)
-                        .append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8)); // UTF-8
-                if (fieldNames.indexOf(fieldName) < fieldNames.size() - 1) {
-                    hashData.append('&');
-                }
-            }
-        }
-
-        // Verify signature
-        String signValue = VNPayConfig.hmacSHA512(vnPayConfig.getVnpHashSecret(), hashData.toString());
-
-        if (!signValue.equals(vnpSecureHash)) {
-            log.error("Invalid signature. Expected: {}, Got: {}", signValue, vnpSecureHash);
-            return false;
-        }
-
-        // Process payment
-        String txnRef = params.get("vnp_TxnRef");
-        String responseCode = params.get("vnp_ResponseCode");
-
-        Payment payment = paymentRepository.findByTransactionId(txnRef)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
-
-        // Store gateway response as JSONB
-        Map<String, Object> gatewayResponse = new HashMap<>(params);
-        payment.setGatewayResponse(gatewayResponse);
-
-        // TODO: AI làm lỗi đoạn này
-        // Update payment status
-        if ("00".equals(responseCode)) {
-            payment.setStatus(PaymentStatus.PAID);
-            payment.setPaidAt(Instant.now());
-
-            // Update order status
-            Order order = payment.getOrder();
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setStatus(OrderStatus.WAITING_FOR_DELIVERY);
-            order.setConfirmedAt(Instant.now());
-            order.setHasPaid(true);
-            orderRepository.save(order);
-
-            log.info("Payment successful for transaction: {}", txnRef);
-        } else {
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.getOrder().setPaymentStatus(PaymentStatus.FAILED);
-
-            log.warn("Payment failed for transaction: {} with code: {}", txnRef, responseCode);
-        }
-
-        paymentRepository.save(payment);
-        return true;
-    }
-
-    @Override
-    @Transactional
     public VNPayCallbackResponse processCallbackWithDetails(Map<String, String> params) {
         log.info("Processing VNPay callback with details: {}", params);
 
@@ -268,6 +201,12 @@ public class VNPayServiceImpl implements VNPayService {
 
                 // Build success response with order and payment details
                 paymentRepository.save(payment);
+
+                try {
+                    emailService.sendOrderConfirmationEmail(order);
+                } catch (Exception ex) {
+                    log.error("Failed to send order confirmation email for order: {}", order.getId(), ex);
+                }
 
                 return responseBuilder
                         .success(true)

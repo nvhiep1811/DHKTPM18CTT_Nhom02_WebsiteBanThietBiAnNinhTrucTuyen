@@ -43,7 +43,7 @@ type PaymentMethod = 'cod' | 'bank_transfer' | 'vnpay';
 const Checkout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
@@ -181,12 +181,6 @@ const Checkout: React.FC = () => {
     toast.info('Đã xóa mã giảm giá');
   };
 
-  const sendOrderConfirmationEmail = async (orderData: any) => {
-    console.log('Sending confirmation email to:', shippingInfo.email);
-    console.log('Order data:', orderData);
-    return true;
-  };
-
   const handlePlaceOrder = async () => {
   if (!validateForm()) {
     toast.error('Vui lòng kiểm tra lại thông tin!');
@@ -227,7 +221,8 @@ const Checkout: React.FC = () => {
       items: orderItems,
       shippingFee: shippingFees[shippingMethod],
       discountCode: appliedCoupon?.code || null,
-      shippingAddress: shippingAddressMap
+      shippingAddress: shippingAddressMap,
+      paymentMethod: paymentMethod.toUpperCase()
     };
 
     // ========================================
@@ -261,8 +256,7 @@ const Checkout: React.FC = () => {
           toast.error(vnpayResponse.message || 'Không thể tạo URL thanh toán');
           return;
         }
-      } catch (error: any) {
-        console.error('Error creating VNPay payment:', error);
+      } catch {
         toast.error('Lỗi khi tạo thanh toán VNPay. Vui lòng thử lại!');
         return;
       }

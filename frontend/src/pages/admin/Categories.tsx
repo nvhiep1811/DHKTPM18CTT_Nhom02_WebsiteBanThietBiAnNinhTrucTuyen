@@ -168,7 +168,7 @@ export async function loadData() {
   try {
     const result = await categoryApi.getAllForAdmin();
     return (result as any).content || result;
-  } catch (error) {
+  } catch {
     return [];
   }
 }

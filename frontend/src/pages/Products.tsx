@@ -101,33 +101,39 @@ const Products: React.FC = () => {
     [pageSize]
   );
 
-  // === Fetch categories & brands ===
+  const fetchFilters = async () => {
+    return Promise.all([
+      categoryApi.getAll(),
+      brandApi.getAll(),
+    ]);
+  };
+
   useEffect(() => {
-    const fetchAllFilters = async () => {
-      try {
-        const [categoriesData, brandsData] = await Promise.all([
-          categoryApi.getAll(),
-          brandApi.getAll({ size: 100 }),
-        ]);
-
-        setCategories([{ id: 0, name: "Tất cả" }, ...categoriesData]);
-        setBrands([{ id: 0, name: "Tất cả" }, ...brandsData.content]);
-      } catch (error) {
-        console.error("Error fetching filters:", error);
-      } finally {
-        setLoadingFilters(false);
-      }
-    };
-
-    fetchAllFilters();
+    fetchFilters()
+      .then(([categoriesRes, brandsRes]) => {
+        setCategories([{ id: 0, name: "Tất cả" }, ...categoriesRes]);
+        setBrands([{ id: 0, name: "Tất cả" }, ...(brandsRes?.content ?? [])]);
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingFilters(false));
   }, []);
 
   // === Load products (debounce + abort) ===
   useEffect(() => {
+    // Đợi filters load xong
+    if (loadingFilters) return;
+
     const abortController = new AbortController();
 
     const timer = setTimeout(() => {
-      const params: any = { page, stockFilter, minPrice, maxPrice };
+      const params: any = { 
+        page, 
+        stockFilter: stockFilter || "all"
+      };
+
+      // Chỉ thêm minPrice/maxPrice nếu có giá trị
+      if (minPrice) params.minPrice = minPrice;
+      if (maxPrice) params.maxPrice = maxPrice;
 
       if (selectedCategory && selectedCategory !== 0) params.categoryId = selectedCategory;
       if (selectedBrand && selectedBrand !== 0) params.brandId = selectedBrand;
@@ -155,6 +161,7 @@ const Products: React.FC = () => {
       abortController.abort();
     };
   }, [
+    loadingFilters, // Thêm dependency này
     selectedCategory,
     selectedBrand,
     searchTerm,
