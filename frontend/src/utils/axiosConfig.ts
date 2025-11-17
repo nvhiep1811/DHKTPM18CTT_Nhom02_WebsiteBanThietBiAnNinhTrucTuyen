@@ -131,7 +131,6 @@ api.interceptors.response.use(
           toast.error(errorData?.message || "Đã xảy ra lỗi không xác định!");
       }
     } else {
-      console.error("Unknown error:", error);
       toast.error("Không thể kết nối đến server. Vui lòng thử lại!");
     }
 

@@ -37,6 +37,11 @@ public class DiscountController {
         return ResponseEntity.ok(discountService.getDiscountDetailsById(id));
     }
 
+    @GetMapping("/code/{code}")
+    public ResponseEntity<DiscountDetailsDTO> getDiscountByCode(@PathVariable String code) {
+        return ResponseEntity.ok(discountService.applyDiscountCode(code));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DiscountDTO> createDiscount(@RequestBody DiscountDTO dto) {

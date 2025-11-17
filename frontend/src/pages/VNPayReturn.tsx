@@ -51,7 +51,6 @@ const VNPayReturn: React.FC = () => {
           toast.error(response.message || getVNPayResponseMessage(params.vnp_ResponseCode));
         }
       } catch (err: any) {
-        console.error('Error processing callback:', err);
         setError(err.response?.data?.message || 'Có lỗi xảy ra khi xử lý thanh toán');
         toast.error('Có lỗi xảy ra khi xử lý thanh toán');
       } finally {

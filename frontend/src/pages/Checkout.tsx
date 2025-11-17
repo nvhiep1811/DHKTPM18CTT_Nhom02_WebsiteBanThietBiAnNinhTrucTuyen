@@ -22,9 +22,10 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useAppSelector } from '../hooks';
 import { cartService, type CartItem } from '../utils/cartService';
-import { orderApi } from '../utils/api';
+import { DiscountApi, orderApi } from '../utils/api';
 import { vnpayApi } from '../utils/vnpayService';
 import type { VNPayPaymentRequest } from '../types/vnpay';
+import type { DiscountDetail } from '../types/types';
 
 interface ShippingInfo {
   fullName: string;
@@ -38,7 +39,7 @@ interface ShippingInfo {
 }
 
 type ShippingMethod = 'standard' | 'express';
-type PaymentMethod = 'cod' | 'bank_transfer' | 'vnpay';
+type PaymentMethod = 'cod' | 'bank_transfer' | 'e_wallet';
 
 const Checkout: React.FC = () => {
   const location = useLocation();
@@ -60,13 +61,13 @@ const Checkout: React.FC = () => {
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('standard');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{code: string; discount: number} | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<DiscountDetail | null>(null);
   const [isEditingAddress, setIsEditingAddress] = useState(true);
   const [errors, setErrors] = useState<Partial<ShippingInfo>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-
-   useEffect(() => {
+  useEffect(() => {
     const loadCheckoutItems = async () => {
       // Trường hợp 1: Mua ngay từ trang chi tiết (product + quantity)
       if (location.state?.product && location.state?.quantity) {
@@ -117,14 +118,38 @@ const Checkout: React.FC = () => {
   };
 
   const calculateDiscount = () => {
-    if (appliedCoupon) {
-      return calculateSubtotal() * (appliedCoupon.discount / 100);
+    if (!appliedCoupon) return 0;
+
+    const subtotal = calculateSubtotal();
+    const shippingFee = shippingFees[shippingMethod];
+
+    switch (appliedCoupon.discountType) {
+      case "PERCENT": {
+        const percentValue = (subtotal * appliedCoupon.discountValue) / 100;
+        return Math.min(percentValue, subtotal); // không bao giờ âm
+      }
+
+      case "FIXED_AMOUNT": {
+        return Math.min(appliedCoupon.discountValue, subtotal);
+      }
+
+      case "FREE_SHIP": {
+        return shippingFee; // miễn phí ship
+      }
+
+      default:
+        return 0;
     }
-    return 0;
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount() + shippingFees[shippingMethod];
+    const subtotal = calculateSubtotal();
+    const shippingFee = shippingFees[shippingMethod];
+    const discount = calculateDiscount();
+
+    const total = subtotal + shippingFee - discount;
+
+    return Math.max(total, 0); // tổng tối thiểu = 0
   };
 
   const validateForm = (): boolean => {
@@ -157,21 +182,48 @@ const Checkout: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleApplyCoupon = () => {
-    const validCoupons: Record<string, number> = {
-      'GIAM10': 10,
-      'GIAM15': 15,
-      'GIAM20': 20
-    };
+  const handleApplyCoupon = async () => {
+    if (isApplyingCoupon) return; // tránh spam
+    
+    if (!couponCode.trim()) {
+      toast.error("Vui lòng nhập mã giảm giá");
+      return;
+    }
 
-    if (validCoupons[couponCode.toUpperCase()]) {
-      setAppliedCoupon({
-        code: couponCode.toUpperCase(),
-        discount: validCoupons[couponCode.toUpperCase()]
-      });
-      toast.success(`Áp dụng mã giảm giá ${validCoupons[couponCode.toUpperCase()]}% thành công!`);
-    } else {
-      toast.error('Mã giảm giá không hợp lệ!');
+    setIsApplyingCoupon(true);
+
+    try {
+      const discount: DiscountDetail = await DiscountApi.findByCode(couponCode.trim().toUpperCase());
+
+      const subtotal = calculateSubtotal();
+      const now = new Date();
+
+      if (!discount.active) {
+        toast.error("Mã giảm giá không còn hoạt động");
+        return;
+      }
+      if (new Date(discount.startAt) > now) {
+        toast.error("Mã giảm giá chưa bắt đầu");
+        return;
+      }
+      if (new Date(discount.endAt) < now) {
+        toast.error("Mã giảm giá đã hết hạn");
+        return;
+      }
+      if (discount.minOrderValue && subtotal < discount.minOrderValue) {
+        toast.error(`Đơn tối thiểu phải đạt ${formatPrice(discount.minOrderValue)}`);
+        return;
+      }
+      if (discount.maxUsage !== null && discount.used >= discount.maxUsage) {
+        toast.error("Mã giảm giá đã hết lượt sử dụng");
+        return;
+      }
+
+      setAppliedCoupon(discount);
+      toast.success(`Áp dụng mã ${discount.code} thành công!`);
+
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
@@ -233,7 +285,7 @@ const Checkout: React.FC = () => {
     // ========================================
     // 3. XỬ LÝ THANH TOÁN VNPAY
     // ========================================
-    if (paymentMethod === 'vnpay') {
+    if (paymentMethod === 'e_wallet') {
       try {
         const vnpayRequest: VNPayPaymentRequest = {
           orderId: createdOrder.id,
@@ -305,7 +357,6 @@ const Checkout: React.FC = () => {
     navigate('/order-success', { state: { orderData } });
 
   } catch (error: any) {
-    console.error('Error placing order:', error);
     
     // ========================================
     // 4. XỬ LÝ LỖI CHI TIẾT
@@ -731,14 +782,14 @@ const Checkout: React.FC = () => {
                 </label>
 
                 <label className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  paymentMethod === 'vnpay' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
+                  paymentMethod === 'e_wallet' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
                 }`}>
                   <div className="flex items-center gap-3">
                     <input
                       type="radio"
                       name="payment"
-                      value="vnpay"
-                      checked={paymentMethod === 'vnpay'}
+                      value="e_wallet"
+                      checked={paymentMethod === 'e_wallet'}
                       onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                       className="w-4 h-4 text-purple-600"
                     />
@@ -823,19 +874,34 @@ const Checkout: React.FC = () => {
                 {appliedCoupon ? (
                   <button
                     onClick={handleRemoveCoupon}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-1"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 
+                              flex items-center gap-1 whitespace-nowrap w-[110px] justify-center"
                   >
                     <X className="h-4 w-4" />
                     Xóa
                   </button>
                 ) : (
-                  <button
-                    onClick={handleApplyCoupon}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1"
-                  >
-                    <Tag className="h-4 w-4" />
-                    Áp dụng
-                  </button>
+                  isApplyingCoupon ? (
+                    <button
+                      disabled
+                      className="px-4 py-2 bg-gray-400 text-white rounded-lg 
+                                flex items-center gap-1 cursor-not-allowed whitespace-nowrap 
+                                w-[110px] justify-center"
+                    >
+                      <Tag className="h-4 w-4" />
+                      Đang kiểm tra...
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleApplyCoupon}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg 
+                                hover:bg-purple-700 flex items-center gap-1 whitespace-nowrap 
+                                w-[110px] justify-center"
+                    >
+                      <Tag className="h-4 w-4" />
+                      Áp dụng
+                    </button>
+                  )
                 )}
               </div>
             </div>

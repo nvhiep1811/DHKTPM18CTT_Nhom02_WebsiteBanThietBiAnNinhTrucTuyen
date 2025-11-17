@@ -88,7 +88,7 @@ export interface Review {
   id: number;
   rating: number;
   comment: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
   productId: string;
   userId: string;
@@ -107,25 +107,45 @@ export interface Article {
 }
 
 // Export VNPay types
-export * from './vnpay';
+export * from "./vnpay";
 export interface Discount {
   id: string;
   code: string;
-  discountType: 'PERCENT' | 'FIXED_AMOUNT' | 'FREE_SHIP';
+  discountType: "PERCENT" | "FIXED_AMOUNT" | "FREE_SHIP";
   discountValue: number;
-  minOrderValue: number; 
+  minOrderValue: number;
   active: boolean;
   startAt: string; // ISO date string
-  endAt: string;   // ISO date string
+  endAt: string; // ISO date string
+}
+
+export interface DiscountDetail {
+  id: string;
+  code: string;
+  discountType: "PERCENT" | "FIXED_AMOUNT" | "FREE_SHIP";
+  discountValue: number;
+  minOrderValue: number | null;
+  maxUsage: number | null;
+  perUserLimit: number | null;
+  used: number;
+  startAt: string;
+  endAt: string;
+  active: boolean;
 }
 
 export interface WarrantyRequest {
   id: string;
   issueType: string;
   description: string;
-  status: 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'REPAIRED' | 'REPLACED' | 'RETURNED';
+  status:
+    | "SUBMITTED"
+    | "ACCEPTED"
+    | "REJECTED"
+    | "REPAIRED"
+    | "REPLACED"
+    | "RETURNED";
   requestedAt: string; // ISO date string
-  resolvedAt: string;   // ISO date string
+  resolvedAt: string; // ISO date string
   product: ProductSummary;
   orderItemId: string;
   unitPrice: number;
@@ -138,7 +158,7 @@ export interface SupportTicket {
   subject: string;
   content: string;
   createdAt: string; // ISO date string
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   userId: string;
 }
 
@@ -155,8 +175,13 @@ export interface Address {
 
 export interface Order {
   id: string;
-  status: 'PENDING' | 'WAITING_FOR_DELIVERY' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
-  paymentStatus: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED';
+  status:
+    | "PENDING"
+    | "WAITING_FOR_DELIVERY"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "CANCELLED";
+  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
 
   subTotal: number;
   discountTotal: number;
@@ -179,9 +204,9 @@ export interface Payment {
   id: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
-  method: 'COD' | 'BANK_TRANSFER' | 'E_WALLET';
-  provider: 'MOMO' | 'VNPAY' | 'NONE';
-  status: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED';
+  method: "COD" | "BANK_TRANSFER" | "E_WALLET";
+  provider: "MOMO" | "VNPAY" | "NONE";
+  status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
   amount: number;
   transactionId?: string;
   paidAt?: string; // ISO date string
@@ -191,7 +216,7 @@ export interface Payment {
 
 export interface Shipment {
   id: number;
-  status: 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'RETURNED';
+  status: "PENDING" | "IN_TRANSIT" | "DELIVERED" | "RETURNED";
   deliveredAt?: string; // ISO date string
   shippedAt?: string; // ISO date string
   orderId: string;
@@ -208,8 +233,13 @@ export interface OrderItem {
 
 export interface OrderDetails {
   id: string;
-  status: 'PENDING' | 'WAITING_FOR_DELIVERY' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
-  paymentStatus: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED';
+  status:
+    | "PENDING"
+    | "WAITING_FOR_DELIVERY"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "CANCELLED";
+  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
 
   subTotal: number;
   discountTotal: number;

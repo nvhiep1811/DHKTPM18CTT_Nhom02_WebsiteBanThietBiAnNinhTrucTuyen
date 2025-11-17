@@ -119,6 +119,14 @@ public class SecurityConfig {
                         // Order endpoints
                         .requestMatchers("/api/orders/my-orders", "/api/orders/cancel/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
+
+                        // Discount endpoints
+                        .requestMatchers(
+                                "/api/discounts/active",
+                                "/api/discounts/code/**"
+                        ).permitAll()
+                        .requestMatchers("/api/discounts/**").hasRole("ADMIN")
+
                         // Allow authenticated users to GET a single order (owner check handled by @PreAuthorize)
                         .requestMatchers(HttpMethod.GET, "/api/orders/*").authenticated()
                         // Admin-only operations
@@ -160,6 +168,10 @@ public class SecurityConfig {
 
                         // Cart
                         .requestMatchers("/api/cart/**").authenticated()
+
+                        // Chatbot
+                        .requestMatchers("/api/chat/ask").permitAll()
+                        .requestMatchers("/api/chat/ingest").hasRole("ADMIN")
 
                         // Default: require authentication for everything else
                         .anyRequest().authenticated()

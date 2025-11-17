@@ -9,26 +9,22 @@ import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.dto.order.request.OrderCreateRequest;
 import secure_shop.backend.dto.order.request.OrderItemRequest;
-import secure_shop.backend.entities.Order;
-import secure_shop.backend.entities.OrderItem;
-import secure_shop.backend.entities.Product;
-import secure_shop.backend.entities.User;
+import secure_shop.backend.entities.*;
 import secure_shop.backend.enums.OrderStatus;
 import secure_shop.backend.enums.PaymentMethod;
 import secure_shop.backend.exception.BusinessRuleViolationException;
 import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.mapper.OrderMapper;
-import secure_shop.backend.repositories.OrderRepository;
-import secure_shop.backend.repositories.ProductRepository;
+import secure_shop.backend.repositories.*;
 import secure_shop.backend.service.OrderService;
 import secure_shop.backend.service.EmailService;
-import secure_shop.backend.repositories.InventoryRepository;
 import secure_shop.backend.service.InventoryService;
 
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
-import secure_shop.backend.repositories.UserRepository;
- 
+
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
@@ -45,7 +41,7 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryService inventoryService;
     private final EmailService emailService;
     private final UserRepository userRepository;
-    
+    private final DiscountRepository discountRepository;
 
     @Override
     public OrderDTO createOrder(OrderCreateRequest request, UUID userId) {
@@ -75,11 +71,17 @@ public class OrderServiceImpl implements OrderService {
             user = userRepository.findById(effectiveUserId)
                     .orElseThrow(() -> new ResourceNotFoundException("User", effectiveUserId));
         }
+        Discount discount = null;
+        if (request.getDiscountCode() != null) {
+            discount = discountRepository.findByCode(request.getDiscountCode())
+                    .orElseThrow(() -> new ResourceNotFoundException("Discount", request.getDiscountCode()));
+        }
         // Build order entity (single creation)
         Order order = Order.builder()
             .shippingFee(request.getShippingFee())
             .shippingAddress(request.getShippingAddress())
             .user(user)
+            .discount(discount)
             .build();
 
        // create order items and attach to order
@@ -100,8 +102,29 @@ public class OrderServiceImpl implements OrderService {
             order.getOrderItems().add(item);
         }
 
+        // --- Tính subtotal tại server (an toàn) ---
+        BigDecimal subTotal = order.getOrderItems().stream()
+                .map(OrderItem::getLineTotal)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // --- Tính discountTotal bằng helper ---
+        BigDecimal shippingFee = order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO;
+        BigDecimal discountTotal = BigDecimal.ZERO;
+        if (discount != null) {
+            discountTotal = calculateDiscountAmount(discount, subTotal, shippingFee, user);
+        }
+
+        order.setSubTotal(subTotal);
+        order.setDiscountTotal(discountTotal);
+        order.setShippingFee(shippingFee);
+
         // Persist order (totals will be calculated by @PrePersist)
         Order savedOrder = orderRepository.save(order);
+
+        discount.setUsed(discount.getUsed() == null ? 1 : discount.getUsed() + 1);
+        discountRepository.save(discount);
 
         if (request.getPaymentMethod() == null ||
                 request.getPaymentMethod() == PaymentMethod.COD) {
@@ -253,5 +276,58 @@ public class OrderServiceImpl implements OrderService {
 
         Order updatedOrder = orderRepository.save(order);
         return orderMapper.toDTO(updatedOrder);
+    }
+
+    // helper trong OrderService (private)
+    private BigDecimal calculateDiscountAmount(Discount discount, BigDecimal subTotal, BigDecimal shippingFee, User user) {
+        if (discount == null) return BigDecimal.ZERO;
+
+        // validate active / date
+        if (Boolean.FALSE.equals(discount.getActive())) {
+            throw new BusinessRuleViolationException("Mã giảm giá không còn hoạt động");
+        }
+        Instant now = Instant.now();
+        if (discount.getStartAt() != null && discount.getStartAt().isAfter(now)) {
+            throw new BusinessRuleViolationException("Mã giảm giá chưa bắt đầu");
+        }
+        if (discount.getEndAt() != null && discount.getEndAt().isBefore(now)) {
+            throw new BusinessRuleViolationException("Mã giảm giá đã hết hạn");
+        }
+
+        // min order
+        if (discount.getMinOrderValue() != null && subTotal.compareTo(discount.getMinOrderValue()) < 0) {
+            throw new BusinessRuleViolationException("Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã");
+        }
+
+        // usage limits (simple checks - concurrent updates need DB-side handling)
+        if (discount.getMaxUsage() != null && discount.getUsed() != null && discount.getUsed().compareTo(discount.getMaxUsage()) >= 0) {
+            throw new BusinessRuleViolationException("Mã giảm giá đã hết lượt sử dụng");
+        }
+
+        if (discount.getPerUserLimit() != null && user != null) {
+            // bạn cần có phương pháp lấy số lượt user đã dùng (ví dụ: discountUsageRepository.countByDiscountAndUser)
+            Integer usedByUser = orderRepository.countByDiscountIdAndUserId(discount.getId(), user.getId());
+            if (usedByUser >= discount.getPerUserLimit()) {
+                throw new BusinessRuleViolationException("Bạn đã dùng hết lượt cho mã này");
+            }
+        }
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        String type = String.valueOf(discount.getDiscountType()); // hoặc enum
+
+        if ("PERCENT".equalsIgnoreCase(type)) {
+            BigDecimal percent = discount.getDiscountValue() == null ? BigDecimal.ZERO : discount.getDiscountValue();
+            discountAmount = subTotal.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            // optional: cap discount <= subTotal
+            if (discountAmount.compareTo(subTotal) > 0) discountAmount = subTotal;
+        } else if ("FIXED_AMOUNT".equalsIgnoreCase(type)) {
+            discountAmount = discount.getDiscountValue() == null ? BigDecimal.ZERO : discount.getDiscountValue();
+            if (discountAmount.compareTo(subTotal) > 0) discountAmount = subTotal;
+        } else if ("FREE_SHIP".equalsIgnoreCase(type)) {
+            discountAmount = shippingFee == null ? BigDecimal.ZERO : shippingFee;
+        }
+
+        // scale 2
+        return discountAmount.setScale(2, RoundingMode.HALF_UP);
     }
 }

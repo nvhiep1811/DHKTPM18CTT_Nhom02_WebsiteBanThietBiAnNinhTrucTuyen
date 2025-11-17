@@ -101,7 +101,6 @@ const ResetPassword: React.FC = () => {
                             'Có lỗi xảy ra. Vui lòng thử lại!';
         toast.error(errorMessage);
       } else {
-        console.error('Reset password error:', error);
         toast.error('Không thể kết nối đến server. Vui lòng thử lại!');
       }
     } finally {

@@ -252,6 +252,10 @@ export const DiscountApi = {
     const response = await api.get("/discounts");
     return response.data;
   },
+  findByCode: async (code: string) => {
+    const response = await api.get(`/discounts/code/${code}`);
+    return response.data;
+  },
   create: async (data: any) => {
     const response = await api.post("/discounts", data);
     return response.data;

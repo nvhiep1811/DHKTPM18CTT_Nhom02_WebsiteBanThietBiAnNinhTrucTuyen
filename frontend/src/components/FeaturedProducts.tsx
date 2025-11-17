@@ -30,7 +30,6 @@ const FeaturedProducts: React.FC = () => {
         }
       } catch (err: any) {
         if (err.name !== 'AbortError' && err.name !== 'CanceledError') {
-          console.error('Error fetching featured products:', err);
           if (!abortController.signal.aborted) {
             setError(true);
             setProducts([]);

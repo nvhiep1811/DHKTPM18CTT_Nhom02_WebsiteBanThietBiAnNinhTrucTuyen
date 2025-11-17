@@ -90,7 +90,6 @@ const Products: React.FC = () => {
         setTotalElements(response.page.totalElements);
       } catch (error: any) {
         if (error.name === "AbortError" || error.name === "CanceledError") return;
-        console.error("Error fetching products:", error);
         setProducts([]);
         setTotalPages(0);
         setTotalElements(0);
@@ -114,7 +113,7 @@ const Products: React.FC = () => {
         setCategories([{ id: 0, name: "Tất cả" }, ...categoriesRes]);
         setBrands([{ id: 0, name: "Tất cả" }, ...(brandsRes?.content ?? [])]);
       })
-      .catch((err) => console.error(err))
+      .catch(() => {})
       .finally(() => setLoadingFilters(false));
   }, []);
 

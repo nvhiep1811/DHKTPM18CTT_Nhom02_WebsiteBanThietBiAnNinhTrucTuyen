@@ -86,5 +86,17 @@ public class DiscountServiceImpl implements DiscountService {
                 .map(discountMapper::toDTO)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public DiscountDetailsDTO applyDiscountCode(String code) {
+        Discount discount = discountRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Mã giảm giá không tồn tại: " + code));
+
+        if (!discount.getActive()) {
+            throw new RuntimeException("Mã giảm giá không còn hiệu lực: " + code);
+        }
+
+        return discountMapper.toDetailsDTO(discount);
+    }
 }
 

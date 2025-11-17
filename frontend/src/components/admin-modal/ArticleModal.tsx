@@ -86,7 +86,6 @@ const ArticleModal: React.FC<ArticleModalProps> = ({
       onSuccess();
       handleClose();
     } catch (error: any) {
-      console.error('Error saving article:', error);
       if (error.response?.data?.message) {
         setErrors({ submit: error.response.data.message });
       } else {

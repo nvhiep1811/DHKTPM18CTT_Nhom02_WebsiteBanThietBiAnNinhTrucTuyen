@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';
 import { useAppSelector } from '../hooks';
-import { productApi, ReviewApi, orderApi } from '../utils/api';
+import { productApi, ReviewApi } from '../utils/api';
 import type { ProductDetail, Review } from '../types/types';
 
 const ProductDetail: React.FC = () => {
@@ -25,7 +25,6 @@ const ProductDetail: React.FC = () => {
     comment: ''
   });
   const [filterRating, setFilterRating] = useState<number | null>(null);
-  const [userOrderItems, setUserOrderItems] = useState<any[]>([]);
 
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
@@ -153,9 +152,6 @@ const ProductDetail: React.FC = () => {
 
       setProduct(baseProduct);
       setReviews(reviewsData || []);
-    } catch (error) {
-      console.error('Error fetching product details:', error);
-      toast.error('Không thể tải thông tin sản phẩm');
     } finally {
       setLoading(false);
     }
@@ -163,37 +159,11 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) {
+      setSelectedImage(0);
+      setQuantity(1);
       fetchProductDetails(id);
     }
   }, [id]);
-
-  useEffect(() => {
-    const fetchUserOrders = async () => {
-      if (isAuthenticated && userRole !== 'guest') {
-        try {
-          const ordersData = await orderApi.getAll();
-          const items: any[] = [];
-          ordersData.forEach((order: any) => {
-            if (['DELIVERED', 'IN_TRANSIT', 'WAITING_FOR_DELIVERY'].includes(order.status)) {
-              order.items?.forEach((item: any) => {
-                items.push({
-                  orderItemId: item.id,
-                  productId: item.product.id,
-                  orderId: order.id,
-                  orderStatus: order.status
-                });
-              });
-            }
-          });
-          setUserOrderItems(items);
-        } catch (error) {
-          console.error('Error fetching user orders:', error);
-          setUserOrderItems([]);
-        }
-      }
-    };
-    fetchUserOrders();
-  }, [isAuthenticated, userRole]);
 
   useEffect(() => {
       window.scrollTo(0, 0);
@@ -207,13 +177,13 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleQuantityChange = (change: number) => {
-  if (!product) return;
-  
-  const newQuantity = quantity + change;
-  if (newQuantity >= 1 && newQuantity <= product.availableStock) {
-    setQuantity(newQuantity);
-  }
-};
+    if (!product) return;
+    
+    const newQuantity = quantity + change;
+    if (newQuantity >= 1 && newQuantity <= product.availableStock) {
+      setQuantity(newQuantity);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -255,49 +225,6 @@ const ProductDetail: React.FC = () => {
     setNewReview({ rating: 5, comment: '' });
   };
 
-  const handleSubmitReview = async () => {
-    if (!newReview.comment.trim()) {
-      toast.error('Vui lòng nhập nội dung đánh giá!');
-      return;
-    }
-
-    if (newReview.comment.length > 1000) {
-      toast.error('Nội dung đánh giá không được vượt quá 1000 ký tự!');
-      return;
-    }
-
-    if (!product?.id) {
-      toast.error('Không tìm thấy thông tin sản phẩm!');
-      return;
-    }
-
-    // Tìm orderItemId từ danh sách orders của user
-    const purchasedItem = userOrderItems.find(item => item.productId === product.id);
-    
-    if (!purchasedItem) {
-      toast.error('Bạn cần mua sản phẩm này trước khi có thể đánh giá!');
-      return;
-    }
-
-    try {
-      const reviewData = {
-        productId: product.id,
-        rating: newReview.rating,
-        comment: newReview.comment,
-        orderItemId: purchasedItem.orderItemId
-      };
-
-      const createdReview = await ReviewApi.create(reviewData);
-      setReviews([createdReview, ...reviews]);
-      toast.success('Đánh giá của bạn đã được gửi và đang chờ duyệt!');
-      handleCloseReviewModal();
-    } catch (error: any) {
-      console.error('Error submitting review:', error);
-      const errorMessage = error.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại!';
-      toast.error(errorMessage);
-    }
-  };
-
   // Filter reviews by rating
   const filteredReviews = reviews.filter(r => {
     if (filterRating && r.rating !== filterRating) return false;
@@ -309,23 +236,25 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="min-h-screen bg-white">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
-              <div className="space-y-4">
-                <div className="w-full h-96 bg-gray-300 rounded-lg"></div>
-                <div className="flex space-x-4">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="w-20 h-20 bg-gray-300 rounded"></div>
-                  ))}
-                </div>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-pulse">
+
+            {/* Left skeleton */}
+            <div className="space-y-4">
+              <div className="w-full h-96 bg-gray-200 rounded-lg"></div>
+              <div className="flex space-x-4">
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
               </div>
-              <div className="space-y-6">
-                <div className="h-8 bg-gray-300 rounded w-3/4"></div>
-                <div className="h-6 bg-gray-300 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-300 rounded w-full"></div>
-                <div className="h-4 bg-gray-300 rounded w-5/6"></div>
-              </div>
+            </div>
+
+            {/* Right skeleton */}
+            <div className="space-y-4">
+              <div className="h-8 w-3/4 bg-gray-200 rounded"></div>
+              <div className="h-6 w-1/2 bg-gray-200 rounded"></div>
+              <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+              <div className="h-4 w-full bg-gray-200 rounded"></div>
             </div>
           </div>
         </main>
@@ -338,9 +267,26 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="min-h-screen bg-white">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm</p>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-pulse">
+
+            {/* Left skeleton */}
+            <div className="space-y-4">
+              <div className="w-full h-96 bg-gray-200 rounded-lg"></div>
+              <div className="flex space-x-4">
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
+                <div className="w-20 h-20 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+
+            {/* Right skeleton */}
+            <div className="space-y-4">
+              <div className="h-8 w-3/4 bg-gray-200 rounded"></div>
+              <div className="h-6 w-1/2 bg-gray-200 rounded"></div>
+              <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+              <div className="h-4 w-full bg-gray-200 rounded"></div>
+            </div>
           </div>
         </main>
         <Footer />
@@ -789,7 +735,7 @@ const ProductDetail: React.FC = () => {
                 Hủy
               </button>
               <button
-                onClick={handleSubmitReview}
+                onClick={() => {}}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
               >
                 Gửi đánh giá

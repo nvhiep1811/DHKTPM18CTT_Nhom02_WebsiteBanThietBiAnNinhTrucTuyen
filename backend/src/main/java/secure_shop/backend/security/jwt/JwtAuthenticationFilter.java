@@ -70,6 +70,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/reviews",
             "/api/reviews/product/",
 
+            // 🎁 DISCOUNTS - PUBLIC GET
+            "/api/discounts/active",
+            "/api/discounts/code/**",
+
+            // 🤖 CHAT BOT - PUBLIC ACCESS
+            "/api/chat/ask",
+
             // 🌐 OAUTH & ERROR
             "/oauth2/",
             "/login/oauth2/",

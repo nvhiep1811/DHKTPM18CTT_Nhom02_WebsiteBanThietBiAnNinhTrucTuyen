@@ -20,7 +20,7 @@ public class DiscountDetailsDTO {
     private DiscountType discountType;
     private BigDecimal discountValue;
     private BigDecimal minOrderValue;
-    private BigDecimal maxUsage;
+    private Integer maxUsage;
     private Integer perUserLimit;
     private Integer used;
     private Instant startAt;

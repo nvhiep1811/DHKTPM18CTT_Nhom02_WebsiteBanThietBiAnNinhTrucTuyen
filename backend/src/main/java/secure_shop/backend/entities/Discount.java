@@ -54,7 +54,7 @@ public class Discount extends BaseEntity {
     @DecimalMin(value = "0.0", inclusive = true, message = "Giới hạn số lần sử dụng không được âm")
     @Digits(integer = 13, fraction = 2, message = "Giới hạn số lần sử dụng không hợp lệ")
     @Column(precision = 15, scale = 2)
-    private BigDecimal maxUsage;
+    private Integer maxUsage;
 
     @Min(value = 1, message = "Giới hạn mỗi người dùng ít nhất là 1 lần")
     private Integer perUserLimit;

@@ -24,5 +24,7 @@ public interface DiscountService {
     Page<DiscountDTO> getDiscountsPage(Pageable pageable);
 
     List<DiscountDTO> getActiveDiscounts();
+
+    DiscountDetailsDTO applyDiscountCode(String code);
 }
 
