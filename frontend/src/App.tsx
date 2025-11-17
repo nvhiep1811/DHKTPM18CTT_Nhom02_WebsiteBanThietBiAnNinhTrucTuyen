@@ -5,6 +5,7 @@ import { router } from "./routes/index";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { restoreAuth } from "./stores/authSlice";
+import ChatWidget from "./components/chat/ChatWidget";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -28,6 +29,7 @@ export default function App() {
         closeOnClick
         pauseOnHover
       />
+      <ChatWidget />
     </Theme>
   );
 }

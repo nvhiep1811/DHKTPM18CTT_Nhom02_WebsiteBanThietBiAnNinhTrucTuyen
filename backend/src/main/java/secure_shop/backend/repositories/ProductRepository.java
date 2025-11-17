@@ -68,4 +68,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
                                            Boolean inStock,
                                            String keyword,
                                            Pageable pageable);
+
+    // Top 5 products theo số lượng review (xem như 'bán chạy' / phổ biến)
+    java.util.List<Product> findTop5ByActiveTrueOrderByReviewCountDesc();
 }

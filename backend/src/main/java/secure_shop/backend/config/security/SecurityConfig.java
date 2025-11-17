@@ -119,7 +119,14 @@ public class SecurityConfig {
                         // Order endpoints
                         .requestMatchers("/api/orders/my-orders", "/api/orders/cancel/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
-                        .requestMatchers("/api/orders/**", "/api/orders/confirm/**").hasRole("ADMIN")
+                        // Allow authenticated users to GET a single order (owner check handled by @PreAuthorize)
+                        .requestMatchers(HttpMethod.GET, "/api/orders/*").authenticated()
+                        // Admin-only operations
+                        .requestMatchers(HttpMethod.GET, "/api/orders").hasRole("ADMIN") // list all orders (paged)
+                        .requestMatchers("/api/orders/confirm/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/confirm/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/orders/**").hasRole("ADMIN")
 
                         // === Payment endpoints ===
                         .requestMatchers(HttpMethod.GET, "/api/payments/order/**").authenticated()
