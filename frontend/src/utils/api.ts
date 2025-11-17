@@ -445,3 +445,23 @@ export const ReviewApi = {
     return response.data;
   },
 };
+
+// Chat API
+export const chatApi = {
+  ask: async (message: string) => {
+    const response = await publicApi.post("/chat/ask", { message });
+    return response.data as {
+      answer: string;
+      suggestions?: Array<{
+        id: string;
+        name: string;
+        sku?: string;
+        rating?: number;
+        reviewCount?: number;
+        thumbnailUrl?: string;
+        price?: string | number;
+      }>;
+      sources?: string[];
+    };
+  },
+};
