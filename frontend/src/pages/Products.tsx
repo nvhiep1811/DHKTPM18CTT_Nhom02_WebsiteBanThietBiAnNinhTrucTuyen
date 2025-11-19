@@ -160,7 +160,7 @@ const Products: React.FC = () => {
       abortController.abort();
     };
   }, [
-    loadingFilters, // Thêm dependency này
+    loadingFilters,
     selectedCategory,
     selectedBrand,
     searchTerm,
@@ -329,208 +329,210 @@ const Products: React.FC = () => {
 
         {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Filters */}
+          {/* Sidebar Filters with Scrollbar */}
           <aside
             className={`w-full lg:w-64 flex-shrink-0 ${
               showFilters ? "block" : "hidden lg:block"
             }`}
           >
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 space-y-6 sm:space-y-8">
-              {/* Category filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-                  Danh mục
-                  {loadingFilters && (
-                    <span className="h-3 w-3 rounded-full bg-purple-400 animate-pulse" />
-                  )}
-                </h3>
+            <div className="bg-white rounded-lg shadow-sm sticky top-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-100 hover:scrollbar-thumb-purple-500">
+              <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                {/* Category filter */}
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2 sticky top-0 bg-white pb-2 z-10">
+                    Danh mục
+                    {loadingFilters && (
+                      <span className="h-3 w-3 rounded-full bg-purple-400 animate-pulse" />
+                    )}
+                  </h3>
 
-                <div className="space-y-2">
-                  {loadingFilters ? (
-                    [...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-8 w-full bg-gray-100 rounded-lg animate-pulse"
-                      />
-                    ))
-                  ) : (
-                    <>
-                      {displayedCategories.map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => handleCategoryChange(category.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                            selectedCategory === category.id
-                              ? "bg-purple-100 text-purple-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                          }`}
-                        >
-                          {category.name}
-                        </button>
-                      ))}
-                      {categories.length > 6 && (
-                        <button
-                          onClick={() => setShowAllCategories(!showAllCategories)}
-                          className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
-                        >
-                          {showAllCategories ? (
-                            <>
-                              <ChevronUp className="h-4 w-4" />
-                              Thu gọn
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-4 w-4" />
-                              Xem tất cả ({categories.length - 6} danh mục)
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Brand filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-                  Thương hiệu
-                  {loadingFilters && (
-                    <span className="h-3 w-3 rounded-full bg-purple-400 animate-pulse" />
-                  )}
-                </h3>
-
-                <div className="space-y-2">
-                  {loadingFilters ? (
-                    [...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-8 w-full bg-gray-100 rounded-lg animate-pulse"
-                      />
-                    ))
-                  ) : (
-                    <>
-                      {displayedBrands.map((brand) => (
-                        <button
-                          key={brand.id}
-                          onClick={() => handleBrandChange(brand.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                            selectedBrand === brand.id
-                              ? "bg-purple-100 text-purple-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                          }`}
-                        >
-                          {brand.name}
-                        </button>
-                      ))}
-                      {brands.length > 6 && (
-                        <button
-                          onClick={() => setShowAllBrands(!showAllBrands)}
-                          className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
-                        >
-                          {showAllBrands ? (
-                            <>
-                              <ChevronUp className="h-4 w-4" />
-                              Thu gọn
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-4 w-4" />
-                              Xem tất cả ({brands.length - 6} thương hiệu)
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Price filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
-                  Khoảng giá
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Giá tối thiểu (₫)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={tempMinPrice}
-                      onChange={(e) => setTempMinPrice(e.target.value)}
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                    />
+                  <div className="space-y-2">
+                    {loadingFilters ? (
+                      [...Array(5)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-8 w-full bg-gray-100 rounded-lg animate-pulse"
+                        />
+                      ))
+                    ) : (
+                      <>
+                        {displayedCategories.map((category) => (
+                          <button
+                            key={category.id}
+                            onClick={() => handleCategoryChange(category.id)}
+                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                              selectedCategory === category.id
+                                ? "bg-purple-100 text-purple-600 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {category.name}
+                          </button>
+                        ))}
+                        {categories.length > 6 && (
+                          <button
+                            onClick={() => setShowAllCategories(!showAllCategories)}
+                            className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                          >
+                            {showAllCategories ? (
+                              <>
+                                <ChevronUp className="h-4 w-4" />
+                                Thu gọn
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4" />
+                                Xem tất cả ({categories.length - 6} danh mục)
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Giá tối đa (₫)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={tempMaxPrice}
-                      onChange={(e) => setTempMaxPrice(e.target.value)}
-                      placeholder="Không giới hạn"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                    />
+                </div>
+
+                {/* Brand filter */}
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2 sticky top-0 bg-white pb-2 z-10">
+                    Thương hiệu
+                    {loadingFilters && (
+                      <span className="h-3 w-3 rounded-full bg-purple-400 animate-pulse" />
+                    )}
+                  </h3>
+
+                  <div className="space-y-2">
+                    {loadingFilters ? (
+                      [...Array(5)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-8 w-full bg-gray-100 rounded-lg animate-pulse"
+                        />
+                      ))
+                    ) : (
+                      <>
+                        {displayedBrands.map((brand) => (
+                          <button
+                            key={brand.id}
+                            onClick={() => handleBrandChange(brand.id)}
+                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                              selectedBrand === brand.id
+                                ? "bg-purple-100 text-purple-600 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {brand.name}
+                          </button>
+                        ))}
+                        {brands.length > 6 && (
+                          <button
+                            onClick={() => setShowAllBrands(!showAllBrands)}
+                            className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                          >
+                            {showAllBrands ? (
+                              <>
+                                <ChevronUp className="h-4 w-4" />
+                                Thu gọn
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4" />
+                                Xem tất cả ({brands.length - 6} thương hiệu)
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+                </div>
+
+                {/* Price filter */}
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-800 mb-4 sticky top-0 bg-white pb-2 z-10">
+                    Khoảng giá
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Giá tối thiểu (₫)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tempMinPrice}
+                        onChange={(e) => setTempMinPrice(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Giá tối đa (₫)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tempMaxPrice}
+                        onChange={(e) => setTempMaxPrice(e.target.value)}
+                        placeholder="Không giới hạn"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleApplyPriceFilter}
+                        className="flex-1 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                      >
+                        Áp dụng
+                      </button>
+                      <button
+                        onClick={handleResetPriceFilter}
+                        className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stock filter */}
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-800 mb-4 sticky top-0 bg-white pb-2 z-10">
+                    Tình trạng
+                  </h3>
+                  <div className="space-y-2">
                     <button
-                      onClick={handleApplyPriceFilter}
-                      className="flex-1 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                      onClick={() => handleStockFilterChange("all")}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                        stockFilter === "all"
+                          ? "bg-purple-100 text-purple-600 font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
                     >
-                      Áp dụng
+                      Tất cả
                     </button>
                     <button
-                      onClick={handleResetPriceFilter}
-                      className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                      onClick={() => handleStockFilterChange("inStock")}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                        stockFilter === "inStock"
+                          ? "bg-purple-100 text-purple-600 font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
                     >
-                      Xóa
+                      Còn hàng
+                    </button>
+                    <button
+                      onClick={() => handleStockFilterChange("outOfStock")}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                        stockFilter === "outOfStock"
+                          ? "bg-purple-100 text-purple-600 font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      Hết hàng
                     </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Stock filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
-                  Tình trạng
-                </h3>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleStockFilterChange("all")}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                      stockFilter === "all"
-                        ? "bg-purple-100 text-purple-600 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    Tất cả
-                  </button>
-                  <button
-                    onClick={() => handleStockFilterChange("inStock")}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                      stockFilter === "inStock"
-                        ? "bg-purple-100 text-purple-600 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    Còn hàng
-                  </button>
-                  <button
-                    onClick={() => handleStockFilterChange("outOfStock")}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                      stockFilter === "outOfStock"
-                        ? "bg-purple-100 text-purple-600 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    Hết hàng
-                  </button>
                 </div>
               </div>
             </div>

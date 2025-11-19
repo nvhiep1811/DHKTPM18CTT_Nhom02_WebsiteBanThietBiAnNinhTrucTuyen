@@ -123,8 +123,10 @@ public class OrderServiceImpl implements OrderService {
         // Persist order (totals will be calculated by @PrePersist)
         Order savedOrder = orderRepository.save(order);
 
-        discount.setUsed(discount.getUsed() == null ? 1 : discount.getUsed() + 1);
-        discountRepository.save(discount);
+        if (discount != null) {
+            discount.setUsed(discount.getUsed() == null ? 1 : discount.getUsed() + 1);
+            discountRepository.save(discount);
+        }
 
         if (request.getPaymentMethod() == null ||
                 request.getPaymentMethod() == PaymentMethod.COD) {
