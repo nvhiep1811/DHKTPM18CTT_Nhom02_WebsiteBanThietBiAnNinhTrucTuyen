@@ -49,8 +49,9 @@ public class ChatServiceImpl implements ChatService {
 
         String heuristicAnswer = heuristic(userMsg, suggestions);
 
-        // If no AI client available or heuristic sufficiently answers
-        if (chatClient == null || shouldSkipLLM(userMsg)) {
+        // If no AI client available, use heuristic
+        if (chatClient == null) {
+            log.info("ChatClient is null - using heuristic answer only");
             return ChatResponse.builder()
                     .answer(heuristicAnswer)
                     .suggestions(filterSuggestions(userMsg, suggestions))
@@ -59,17 +60,19 @@ public class ChatServiceImpl implements ChatService {
 
         String systemContext = buildSystemContext(suggestions, userMsg);
         try {
+            log.info("Calling OpenAI with user message: {}", userMsg);
             String aiAnswer = chatClient.prompt()
                     .system(systemContext)
                     .user(userMsg)
                     .call()
                     .content();
+            log.info("OpenAI response received successfully");
             return ChatResponse.builder()
                     .answer(aiAnswer)
                     .suggestions(filterSuggestions(userMsg, suggestions))
                     .build();
         } catch (Exception ex) {
-            log.warn("AI call failed, fallback heuristic: {}", ex.getMessage());
+            log.error("AI call failed, fallback heuristic", ex);
             return ChatResponse.builder()
                     .answer(heuristicAnswer)
                     .suggestions(filterSuggestions(userMsg, suggestions))
@@ -95,7 +98,9 @@ public class ChatServiceImpl implements ChatService {
                 if (!docs.isEmpty()) {
                     ragContext.append("\nNội dung tham chiếu:\n");
                     for (Document d : docs) {
-                        ragContext.append("- ").append(String.valueOf(d)).append("\n");
+                        // Document is a record in Spring AI 1.x - access text via getText()
+                        String text = d.getText();
+                        ragContext.append("- ").append(text != null ? text : d.toString()).append("\n");
                     }
                 }
             } catch (Exception e) {
@@ -106,11 +111,6 @@ public class ChatServiceImpl implements ChatService {
         return "Bạn là trợ lý hỗ trợ khách hàng cho website bán hàng. Trả lời ngắn gọn, tiếng Việt, không bịa.\n" +
                 "Sản phẩm phổ biến:\n" + productLines + ragContext +
                 "Nếu câu hỏi không liên quan hãy mời người dùng mô tả rõ hơn.";
-    }
-
-    private boolean shouldSkipLLM(String userMsg) {
-        String lower = userMsg.toLowerCase(Locale.ROOT);
-        return lower.contains("chính sách") || lower.contains("đặt hàng") || lower.contains("bán chạy") || lower.contains("phù hợp");
     }
 
     private String heuristic(String msg, List<ChatResponse.ProductSuggestion> suggestions) {
