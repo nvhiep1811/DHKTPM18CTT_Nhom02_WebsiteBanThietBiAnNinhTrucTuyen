@@ -2,18 +2,18 @@ package secure_shop.backend.mapper;
 
 import org.springframework.stereotype.Component;
 import secure_shop.backend.dto.product.ReviewDTO;
-import secure_shop.backend.entities.Product;
 import secure_shop.backend.entities.Review;
-import secure_shop.backend.entities.User;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class ReviewMapper {
 
+    /**
+     * Convert Review entity to ReviewDTO
+     */
     public ReviewDTO toDTO(Review review) {
-        if (review == null) return null;
+        if (review == null) {
+            return null;
+        }
 
         return ReviewDTO.builder()
                 .id(review.getId())
@@ -24,49 +24,45 @@ public class ReviewMapper {
                 .productId(review.getProduct() != null ? review.getProduct().getId() : null)
                 .userId(review.getUser() != null ? review.getUser().getId() : null)
                 .userName(review.getUser() != null ? review.getUser().getName() : null)
+                .orderItem(review.getOrderItem() != null ? review.getOrderItem().getId() : null)
                 .build();
     }
 
+    /**
+     * Convert ReviewDTO to Review entity (for creation)
+     * Note: Product, User, and OrderItem must be set separately in the service
+     */
     public Review toEntity(ReviewDTO dto) {
-        if (dto == null) return null;
-
-        Review review = new Review();
-        review.setId(dto.getId());
-        review.setRating(dto.getRating());
-        review.setComment(dto.getComment());
-
-        if (dto.getStatus() != null) {
-            review.setStatus(dto.getStatus());
+        if (dto == null) {
+            return null;
         }
 
-        if (dto.getProductId() != null) {
-            Product product = new Product();
-            product.setId(dto.getProductId());
-            review.setProduct(product);
-        }
-
-        if (dto.getUserId() != null) {
-            User user = new User();
-            user.setId(dto.getUserId());
-            review.setUser(user);
-        }
-
-        return review;
+        return Review.builder()
+                .id(dto.getId())
+                .rating(dto.getRating())
+                .comment(dto.getComment())
+                .status(dto.getStatus())
+                .build();
     }
 
-    public List<ReviewDTO> toDTOList(List<Review> reviews) {
-        if (reviews == null) return List.of();
-        return reviews.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-    }
+    /**
+     * Update existing Review entity from ReviewDTO
+     * Only updates mutable fields (rating and comment)
+     */
+    public void updateEntityFromDTO(ReviewDTO dto, Review review) {
+        if (dto == null || review == null) {
+            return;
+        }
 
-    public void updateEntityFromDTO(ReviewDTO dto, Review entity) {
-        if (dto == null || entity == null) return;
+        if (dto.getRating() != null) {
+            review.setRating(dto.getRating());
+        }
 
-        if (dto.getRating() != null) entity.setRating(dto.getRating());
-        if (dto.getComment() != null) entity.setComment(dto.getComment());
-        if (dto.getStatus() != null) entity.setStatus(dto.getStatus());
+        if (dto.getComment() != null) {
+            review.setComment(dto.getComment());
+        }
+
+        // Note: We don't update status, product, user, or orderItem here
+        // Those are managed by specific service methods
     }
 }
-

@@ -28,4 +28,3 @@ public interface ReviewService {
 
     ReviewDTO rejectReview(Long id);
 }
-

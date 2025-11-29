@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { orderApi } from "../utils/api";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { orderApi, ReviewApi } from "../utils/api";
+import { toast } from "react-toastify";
+import { Star, X } from "lucide-react";
 
 interface OrderItem {
+  id?: string;
   product?: { id?: string; name?: string; sku?: string; thumbnailUrl?: string };
   quantity?: number;
   unitPrice?: number;
   lineTotal?: number;
+  reviewId?: string;
+  rating?: number;
 }
 
 interface OrderDetails {
@@ -24,9 +29,15 @@ interface OrderDetails {
 
 export default function OrderDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -46,6 +57,111 @@ export default function OrderDetail() {
       mounted = false;
     };
   }, [id]);
+
+  const handleOpenReview = (item: OrderItem) => {
+    // Double-check authentication before opening modal
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để đánh giá!");
+      navigate("/login");
+      return;
+    }
+
+    setSelectedItem(item);
+    setRating(item.rating || 0);
+    setComment("");
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedItem || rating === 0) {
+      toast.error("Vui lòng chọn số sao đánh giá!");
+      return;
+    }
+
+    if (!comment.trim()) {
+      toast.error("Vui lòng nhập nhận xét của bạn!");
+      return;
+    }
+
+    if (comment.length > 1000) {
+      toast.error("Nhận xét không được vượt quá 1000 ký tự!");
+      return;
+    }
+
+    // Check if user is authenticated
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để đánh giá!");
+      navigate("/login");
+      return;
+    }
+
+    // Validate productId
+    if (!selectedItem.product?.id) {
+      toast.error("Không tìm thấy thông tin sản phẩm!");
+      console.error("Missing productId:", selectedItem);
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const reviewData: any = {
+        productId: selectedItem.product.id,
+        rating,
+        comment: comment.trim(),
+      };
+
+      // Optionally include orderItem ID if available
+      if (selectedItem.id) {
+        reviewData.orderItem = selectedItem.id;
+      }
+
+      console.log("📝 Submitting review:", reviewData);
+      console.log("🔑 Token exists:", !!token);
+      console.log("🔑 Token preview:", token.substring(0, 20) + "...");
+
+      const response = await ReviewApi.createReview(reviewData);
+      console.log("✅ Review created:", response);
+      
+      toast.success("Đánh giá của bạn đã được gửi và đang chờ duyệt!");
+      setShowReviewModal(false);
+      
+      // Update local state to reflect the review
+      if (order && order.orderItems) {
+        const updatedItems = order.orderItems.map(item => 
+          item.product?.id === selectedItem.product?.id 
+            ? { ...item, rating, reviewId: 'pending-review' }
+            : item
+        );
+        setOrder({ ...order, orderItems: updatedItems });
+      }
+    } catch (e: any) {
+      console.error("❌ Review submission error:", e);
+      console.error("Error response:", e.response?.data);
+      
+      // Handle 401 specifically
+      if (e.response?.status === 401) {
+        // Check if this is after a retry (token refresh failed)
+        if (e.config?._axiosRetry) {
+          toast.error("Phiên đăng nhập đã hết hạn và không thể làm mới. Vui lòng đăng nhập lại!");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("tokenExpiresAt");
+          setTimeout(() => navigate("/login"), 1500);
+        } else {
+          toast.error("Phiên đăng nhập đã hết hạn. Vui lòng thử lại!");
+        }
+        return;
+      }
+      
+      const errorMessage = e.response?.data?.message || 
+                          e.response?.data?.error ||
+                          "Không thể gửi đánh giá. Vui lòng thử lại!";
+      toast.error(errorMessage);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -83,7 +199,9 @@ export default function OrderDetail() {
       <BackLink />
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Đơn hàng #{shortId(order.id)}</h1>
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Đơn hàng #{shortId(order.id)}
+          </h1>
           <p className="text-gray-600 text-sm">Tạo lúc {formatDate(order.createdAt)}</p>
         </div>
         <div className="text-right space-y-2">
@@ -91,7 +209,7 @@ export default function OrderDetail() {
             <StatusBadge value={order.status} />
             <PaymentBadge value={order.paymentStatus} />
           </div>
-          <div className="text-xl font-bold text-gray-800">{formatCurrency(order.grandTotal)}</div>
+          {/* <div className="text-xl font-bold text-gray-800">{formatCurrency(order.grandTotal)}</div> */}
         </div>
       </div>
 
@@ -104,25 +222,56 @@ export default function OrderDetail() {
             </div>
             <div className="divide-y">
               {(order.orderItems || []).map((it, idx) => (
-                <div key={idx} className="p-4 flex items-start gap-4 hover:bg-indigo-50/40 transition">
-                  <div className="w-16 h-16 bg-indigo-50 border border-indigo-100 rounded overflow-hidden flex items-center justify-center">
-                    {it.product?.thumbnailUrl ? (
-                      <img src={it.product.thumbnailUrl} alt={it.product.name || "SP"} className="w-full h-full object-cover" />
-                    ) : (
-                      <svg className="w-6 h-6 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4-9 4-9-4v10l9 4 9-4V7" /></svg>
-                    )}
+                <div key={idx} className="p-4 hover:bg-indigo-50/40 transition">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-indigo-50 border border-indigo-100 rounded overflow-hidden flex items-center justify-center">
+                      {it.product?.thumbnailUrl ? (
+                        <img src={it.product.thumbnailUrl} alt={it.product.name || "SP"} className="w-full h-full object-cover" />
+                      ) : (
+                        <svg className="w-6 h-6 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4-9 4-9-4v10l9 4 9-4V7" /></svg>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Link 
+                        to={`/products/${it.product?.id}`}
+                        className="font-medium text-gray-900 hover:text-indigo-600 transition"
+                      >
+                        {it.product?.name}
+                      </Link>
+                      {it.product?.sku && <div className="text-xs text-gray-500 mt-0.5">SKU: {it.product.sku}</div>}
+                      <div className="text-xs text-gray-500 mt-1">SL: {it.quantity}</div>
+                      {it.rating && it.reviewId && (
+                        <div className="flex items-center gap-1 mt-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${i < it.rating! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-600 ml-1">Đã đánh giá</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="text-gray-500">Đơn giá</div>
+                      <div className="font-semibold">{formatCurrency(it.unitPrice)}</div>
+                      <div className="mt-2 text-gray-500">Thành tiền</div>
+                      <div className="font-semibold">{formatCurrency(it.lineTotal)}</div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{it.product?.name}</div>
-                    {it.product?.sku && <div className="text-xs text-gray-500 mt-0.5">SKU: {it.product.sku}</div>}
-                    <div className="text-xs text-gray-500 mt-1">SL: {it.quantity}</div>
-                  </div>
-                  <div className="text-right text-sm">
-                    <div className="text-gray-500">Đơn giá</div>
-                    <div className="font-semibold">{formatCurrency(it.unitPrice)}</div>
-                    <div className="mt-2 text-gray-500">Thành tiền</div>
-                    <div className="font-semibold">{formatCurrency(it.lineTotal)}</div>
-                  </div>
+                  {!it.reviewId && order.status === "DELIVERED" && (
+                    <button
+                      onClick={() => handleOpenReview(it)}
+                      className="mt-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[.97] transition shadow-sm"
+                    >
+                      Viết đánh giá
+                    </button>
+                  )}
+                  {!it.reviewId && order.status !== "DELIVERED" && (
+                    <div className="mt-3 text-xs text-gray-500 italic">
+                      Chỉ có thể đánh giá sau khi đơn hàng đã được giao
+                    </div>
+                  )}
                 </div>
               ))}
               {(order.orderItems || []).length === 0 && (
@@ -160,6 +309,94 @@ export default function OrderDetail() {
           Quay lại danh sách đơn
         </Link>
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b bg-indigo-50/60">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Đánh giá sản phẩm</h2>
+                  <p className="text-sm text-gray-600 mt-1">{selectedItem.product?.name}</p>
+                </div>
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Đánh giá của bạn *</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                    >
+                      <Star
+                        className={`w-10 h-10 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">({rating}/5 sao)</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nhận xét của bạn * <span className="text-xs text-gray-500">(tối đa 1000 ký tự)</span>
+                </label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                  placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
+                  maxLength={1000}
+                />
+                <p className="text-xs text-gray-500 mt-1 text-right">
+                  {comment.length}/1000 ký tự
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-700">
+                  <strong>Lưu ý:</strong> Đánh giá của bạn sẽ được kiểm duyệt trước khi hiển thị công khai. 
+                  Vui lòng đánh giá khách quan và trung thực.
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  ⚠️ Nếu gặp lỗi đăng nhập, vui lòng <button 
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.href = "/login";
+                    }}
+                    className="underline font-semibold hover:text-blue-800"
+                  >đăng nhập lại</button> và thử lại.
+                </p>
+              </div>
+            </div>
+            <div className="p-6 border-t bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 active:scale-[.97] transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={submittingReview || rating === 0 || !comment.trim()}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[.97] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingReview ? "Đang gửi..." : "Gửi đánh giá"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -191,8 +428,6 @@ function formatCurrency(n?: number) {
     return `${n ?? 0}`;
   }
 }
-
-// (legacy) badgeForPayment replaced by PaymentBadge component
 
 function formatAddress(addr?: Record<string, string> | string) {
   if (!addr) return "(Không có địa chỉ)";

@@ -29,6 +29,42 @@ const ProductDetail: React.FC = () => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
 
+  const handleSubmitReview = async () => {
+    if (!newReview.comment.trim()) {
+      toast.error('Vui lòng nhập nhận xét của bạn!');
+      return;
+    }
+
+    if (newReview.comment.length > 1000) {
+      toast.error('Nhận xét không được vượt quá 1000 ký tự!');
+      return;
+    }
+
+    try {
+      const reviewData = {
+        productId: product?.id,
+        rating: newReview.rating,
+        comment: newReview.comment.trim(),
+      };
+
+      await ReviewApi.createReview(reviewData);
+      
+      toast.success('Đánh giá của bạn đã được gửi và đang chờ duyệt!');
+      handleCloseReviewModal();
+      
+      // Refresh reviews
+      if (id) {
+        const reviewsData = await ReviewApi.getReviewsByProduct(id);
+        setReviews(reviewsData || []);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          'Không thể gửi đánh giá. Vui lòng thử lại!';
+      toast.error(errorMessage);
+    }
+  };
+
   const fetchProductDetails = async (productId: string) => {
     try {
       setLoading(true);
@@ -735,8 +771,13 @@ const ProductDetail: React.FC = () => {
                 Hủy
               </button>
               <button
-                onClick={() => {}}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                onClick={handleSubmitReview}
+                disabled={!newReview.comment.trim()}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                  !newReview.comment.trim()
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                }`}
               >
                 Gửi đánh giá
               </button>

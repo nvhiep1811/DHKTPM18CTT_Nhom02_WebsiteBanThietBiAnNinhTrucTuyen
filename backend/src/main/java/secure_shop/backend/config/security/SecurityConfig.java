@@ -1,5 +1,8 @@
 package secure_shop.backend.config.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -152,9 +155,20 @@ public class SecurityConfig {
                         .requestMatchers("/api/shipments/**").hasRole("ADMIN")
 
                         // Review endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/reviews", "/api/reviews/product/**").permitAll()
-                        .requestMatchers("/api/reviews/my-reviews", "/api/reviews/user/**").authenticated()
-                        .requestMatchers("/api/reviews/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/reviews",                     // ← UNCOMMENT THIS
+                                "/api/reviews/product/**",
+                                "/api/reviews/{id}"
+                        ).permitAll()
+
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/reviews/user/**"
+                        ).authenticated()
+
+                        .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/reviews/approve/**", "/api/reviews/reject/**").hasRole("ADMIN")
 
                         // Warranty request endpoints
                         .requestMatchers(HttpMethod.GET,

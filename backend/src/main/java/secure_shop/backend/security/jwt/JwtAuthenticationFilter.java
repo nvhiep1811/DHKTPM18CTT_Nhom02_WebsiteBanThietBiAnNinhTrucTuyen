@@ -67,7 +67,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/products/summary/",
 
             // 💬 REVIEWS - PUBLIC GET (product reviews)
-            "/api/reviews",
             "/api/reviews/product/",
 
             // 🎁 DISCOUNTS - PUBLIC GET

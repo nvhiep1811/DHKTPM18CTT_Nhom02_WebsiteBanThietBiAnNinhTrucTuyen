@@ -396,55 +396,62 @@ export const SupportTicketApi = {
   },
 };
 
-// Review API
+// Review API - FIXED VERSION
 export const ReviewApi = {
-  // PUBLIC: Lấy tất cả reviews
+  // PUBLIC: Get all reviews with pagination
   getAll: async (params?: { page?: number; size?: number }) => {
     const response = await publicApi.get("/reviews", { params });
     return response.data;
   },
-  // PUBLIC: Lấy reviews theo product
+
+  // PUBLIC: Get reviews for a specific product
   getReviewsByProduct: async (productId: string) => {
     const response = await publicApi.get(`/reviews/product/${productId}`);
     return response.data;
   },
-  // PUBLIC: Lấy reviews theo user
+
+  // AUTH: Get reviews by user (requires auth)
   getReviewsByUser: async (userId: string) => {
-    const response = await publicApi.get(`/reviews/user/${userId}`);
+    const response = await api.get(`/reviews/user/${userId}`);
     return response.data;
   },
-  // PUBLIC: Lấy review theo ID
+
+  // PUBLIC: Get single review by ID
   getById: async (id: number) => {
     const response = await publicApi.get(`/reviews/${id}`);
     return response.data;
   },
-  // AUTH - User: Tạo review mới
-  create: async (data: {
-    productId: string;
+
+  // AUTH - User: Create new review (requires authentication)
+  createReview: async (data: {
+    productId?: string;
     rating: number;
     comment: string;
-    orderItemId: number;
   }) => {
+    console.log("Creating review with data:", data);
     const response = await api.post("/reviews", data);
     return response.data;
   },
-  // AUTH - User: Cập nhật review của mình
-  update: async (id: number, data: { rating?: number; comment?: string }) => {
+
+  // AUTH - User: Update own review (only PENDING reviews)
+  updateReview: async (id: number, data: { rating: number; comment: string }) => {
     const response = await api.put(`/reviews/${id}`, data);
     return response.data;
   },
-  // AUTH - User/Admin: Xóa review
-  delete: async (id: number) => {
-    const response = await api.delete(`/reviews/${id}`);
-    return response.data;
+
+  // AUTH - User/Admin: Delete review
+  deleteReview: async (id: number) => {
+    await api.delete(`/reviews/${id}`);
   },
-  // AUTH - Admin: Phê duyệt review
-  approve: async (id: number) => {
+
+  // AUTH - Admin: Approve review
+  approveReview: async (id: number) => {
     const response = await api.patch(`/reviews/approve/${id}`);
     return response.data;
   },
-  // AUTH - Admin: Từ chối review
-  reject: async (id: number) => {
+
+  // AUTH - Admin: Reject review
+  rejectReview: async (id: number) => {
     const response = await api.patch(`/reviews/reject/${id}`);
     return response.data;
   },

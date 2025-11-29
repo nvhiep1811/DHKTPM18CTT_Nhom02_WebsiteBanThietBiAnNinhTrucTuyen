@@ -1,5 +1,6 @@
 package secure_shop.backend.dto.product;
 
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,4 +28,5 @@ public class ReviewDTO implements Serializable {
     private UUID productId;
     private UUID userId;
     private String userName;
+    private Long orderItem;
 }
