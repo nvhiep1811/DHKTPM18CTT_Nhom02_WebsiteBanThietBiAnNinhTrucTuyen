@@ -476,3 +476,41 @@ export const chatApi = {
     };
   },
 };
+
+// ✅ Address API - NEW
+export const AddressApi = {
+  // Lấy tất cả địa chỉ của user
+  getAll: async () => {
+    const response = await api.get("/addresses");
+    return response.data;
+  },
+  // Lấy địa chỉ mặc định
+  getDefault: async () => {
+    const response = await api.get("/addresses/default");
+    return response.data;
+  },
+  // Lấy địa chỉ theo ID
+  getById: async (id: string) => {
+    const response = await api.get(`/addresses/${id}`);
+    return response.data;
+  },
+  // Tạo địa chỉ mới
+  create: async (data: any) => {
+    const response = await api.post("/addresses", data);
+    return response.data;
+  },
+  // Cập nhật địa chỉ
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/addresses/${id}`, data);
+    return response.data;
+  },
+  // Xóa địa chỉ
+  delete: async (id: string) => {
+    await api.delete(`/addresses/${id}`);
+  },
+  // Đặt địa chỉ mặc định
+  setDefault: async (id: string) => {
+    const response = await api.patch(`/addresses/${id}/set-default`);
+    return response.data;
+  },
+};

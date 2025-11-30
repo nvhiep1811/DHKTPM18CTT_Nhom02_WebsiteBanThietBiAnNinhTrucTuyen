@@ -5,10 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { logout, restoreAuthSuccess } from '../stores/authSlice';
 import { toast } from 'react-toastify';
-import { userApi } from '../utils/api';
+import { userApi, AddressApi } from '../utils/api';
 import axiosInstance from '../utils/axiosConfig';
 import { authService } from '../utils/authService';
 import { imageUploadService } from '../utils/imageUploadService';
+
+interface Address {
+  id: number;
+  name: string;
+  phone: string;
+  street: string;
+  ward: string;
+  province: string;
+  isDefault: boolean;
+}
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -22,8 +32,8 @@ const Profile: React.FC = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-      window.scrollTo(0, 0);
-    }, []);
+    window.scrollTo(0, 0);
+  }, []);
 
   // Login/out redirect
   useEffect(() => {
@@ -41,7 +51,7 @@ const Profile: React.FC = () => {
     id: user?.id || '',
     name: user?.name || '',
     phone: user?.phone || '',
-    avatarUrl: user?.avatarUrl || '', // Đổi từ avatar sang avatarUrl
+    avatarUrl: user?.avatarUrl || '',
   });
 
   // Update formData when user changes
@@ -51,7 +61,7 @@ const Profile: React.FC = () => {
         id: user.id || '',
         name: user.name || '',
         phone: user.phone || '',
-        avatarUrl: user.avatarUrl || '', // Đổi từ avatar sang avatarUrl
+        avatarUrl: user.avatarUrl || '',
       });
     }
   }, [user]);
@@ -73,54 +83,37 @@ const Profile: React.FC = () => {
     setIsUploadingAvatar(true);
 
     try {
-      // imageUploadService.validateFile sẽ tự động validate và toast error
-      // nếu file không hợp lệ sẽ throw error
-      
-      const oldAvatarUrl = formData.avatarUrl; // Đổi từ avatar sang avatarUrl
+      const oldAvatarUrl = formData.avatarUrl;
 
-      // Upload new avatar - imageUploadService sẽ tự validate
       const result = await imageUploadService.uploadImage(file, {
         bucket: 'avatars',
         folder: 'users'
       });
 
-      console.log('Upload result:', result); // DEBUG
-
-      // Prepare update data with new avatar URL
       const updateData = {
         id: formData.id,
         name: formData.name,
         phone: formData.phone?.trim() || null,
-        avatarUrl: result.url // Đổi từ avatar sang avatarUrl để match với database
+        avatarUrl: result.url
       };
 
-      console.log('Updating profile with data:', updateData); // DEBUG
+      await userApi.updateProfile(updateData);
 
-      // Update to server
-      const updateResponse = await userApi.updateProfile(updateData);
-      console.log('Update response:', updateResponse); // DEBUG
-
-      // Delete old avatar after successful update (if exists)
       if (oldAvatarUrl) {
         try {
           await imageUploadService.deleteImage(oldAvatarUrl, 'avatars');
-          console.log('Old avatar deleted successfully');
         } catch (deleteError) {
           console.error('Failed to delete old avatar:', deleteError);
-          // Không toast error ở đây vì ảnh mới đã upload thành công
         }
       }
       
       toast.success('Cập nhật ảnh đại diện thành công!');
 
-      // Refresh user data from server
       const response = await axiosInstance.get("/auth/me");
       const updatedUser = response.data;
 
-      // Update local state
       setFormData(prev => ({ ...prev, avatarUrl: result.url }));
 
-      // Update Redux and localStorage
       const token = localStorage.getItem("accessToken");
       if (token) {
         dispatch(restoreAuthSuccess({ user: updatedUser, accessToken: token }));
@@ -129,17 +122,13 @@ const Profile: React.FC = () => {
     } catch (error: any) {
       console.error('Avatar upload failed:', error);
       
-      // imageUploadService đã toast error trong trường hợp validation fail
-      // Chỉ toast nếu là lỗi từ server
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else if (!error.message?.includes('File size') && !error.message?.includes('Only')) {
-        // Nếu không phải lỗi validation (đã được toast bởi imageUploadService)
         toast.error('Tải ảnh lên thất bại, vui lòng thử lại!');
       }
     } finally {
       setIsUploadingAvatar(false);
-      // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -149,7 +138,6 @@ const Profile: React.FC = () => {
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate phone number
     if (formData.phone) {
       const phoneRegex = /^(\+84|0)[0-9]{9,10}$/;
       if (!phoneRegex.test(formData.phone)) {
@@ -159,10 +147,9 @@ const Profile: React.FC = () => {
     }
 
     try {
-      // Remove empty fields
       const dataToUpdate = {
         ...formData,
-        phone: formData.phone?.trim() || null, // Send null if empty
+        phone: formData.phone?.trim() || null,
       };
 
       await userApi.updateProfile(dataToUpdate);
@@ -231,28 +218,227 @@ const Profile: React.FC = () => {
     }
   };
 
-  const menu = [
-    { key: 'account', label: 'Thông tin cá nhân' },
-    { key: 'address', label: 'Địa chỉ' },
-    { key: 'payment', label: 'Phương thức thanh toán' },
-    { key: 'orders', label: 'Đơn hàng của tôi' },
-    { key: 'password', label: 'Đổi mật khẩu' },
-    { key: 'settings', label: 'Tùy chỉnh khác' },
-  ];
+  // Addresses
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    name: '',
+    phone: '',
+    street: '',
+    ward: '',
+    province: '',
+    isDefault: false,
+  });
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
-  const sampleAddresses = [
-    { id: 1, name: 'Nguyen Van A', phone: '0123456789', address: '123 Nguyen Trai, Quan 1, TP HCM', default: true },
-    { id: 2, name: 'Tran Thi B', phone: '0987654321', address: '45 Le Loi, Quan 3, TP HCM', default: false }
-  ];
+  // Province API state
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
 
+  const fetchAddresses = async () => {
+    setLoadingAddresses(true);
+    try {
+      const data = await AddressApi.getAll();
+      setAddresses(data);
+    } catch (error) {
+      toast.error('Lỗi khi tải địa chỉ!');
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  // Fetch provinces
+  const fetchProvinces = async () => {
+    setLoadingProvinces(true);
+    try {
+      const response = await fetch('https://vapi.vnappmob.com/api/v2/province/');
+      const data = await response.json();
+      if (data.results) {
+        setProvinces(data.results);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách tỉnh thành!');
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  // Fetch districts when province is selected
+  const fetchDistricts = async (provinceId: string) => {
+    setLoadingDistricts(true);
+    setDistricts([]);
+    setWards([]);
+    setSelectedDistrictId('');
+    try {
+      const response = await fetch(`https://vapi.vnappmob.com/api/v2/province/district/${provinceId}`);
+      const data = await response.json();
+      if (data.results) {
+        setDistricts(data.results);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách quận huyện!');
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
+
+  // Fetch wards when district is selected
+  const fetchWards = async (districtId: string) => {
+    setLoadingWards(true);
+    setWards([]);
+    try {
+      const response = await fetch(`https://vapi.vnappmob.com/api/v2/province/ward/${districtId}`);
+      const data = await response.json();
+      if (data.results) {
+        setWards(data.results);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách phường xã!');
+    } finally {
+      setLoadingWards(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'address') {
+      fetchAddresses();
+      fetchProvinces();
+    }
+  }, [activeTab]);
+
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    
+    if (name === 'province') {
+      const province = provinces.find(p => p.province_id === value);
+      setSelectedProvinceId(value);
+      setAddressForm(prev => ({ 
+        ...prev, 
+        province: province?.province_name || '', 
+        ward: '' 
+      }));
+      setSelectedDistrictId('');
+      if (value) {
+        fetchDistricts(value);
+      } else {
+        setDistricts([]);
+        setWards([]);
+      }
+    } else if (name === 'district') {
+      districts.find(d => d.district_id === value);
+      setSelectedDistrictId(value);
+      if (value) {
+        fetchWards(value);
+      } else {
+        setWards([]);
+      }
+    } else if (name === 'ward') {
+      const ward = wards.find(w => w.ward_id === value);
+      const district = districts.find(d => d.district_id === selectedDistrictId);
+      setAddressForm(prev => ({ 
+        ...prev, 
+        ward: ward && district ? `${ward.ward_name}, ${district.district_name}` : '' 
+      }));
+    } else {
+      setAddressForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    }
+  };
+
+  const handleAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingAddress) {
+        await AddressApi.update(editingAddress.id.toString(), addressForm);
+        toast.success('Cập nhật địa chỉ thành công!');
+      } else {
+        await AddressApi.create(addressForm);
+        toast.success('Thêm địa chỉ thành công!');
+      }
+      setShowAddressForm(false);
+      setEditingAddress(null);
+      resetAddressForm();
+      fetchAddresses();
+    } catch (error) {
+      toast.error('Lỗi khi lưu địa chỉ!');
+    }
+  };
+
+  const handleEditAddress = (addr: Address) => {
+    setAddressForm({
+      name: addr.name,
+      phone: addr.phone,
+      street: addr.street,
+      ward: addr.ward,
+      province: addr.province,
+      isDefault: addr.isDefault,
+    });
+    setEditingAddress(addr);
+    setShowAddressForm(true);
+    // Reset selections when editing
+    setSelectedProvinceId('');
+    setSelectedDistrictId('');
+    setDistricts([]);
+    setWards([]);
+  };
+
+    // Reset address form
+  const resetAddressForm = () => {
+    setAddressForm({ 
+      name: '', 
+      phone: '', 
+      street: '', 
+      ward: '', 
+      province: '', 
+      isDefault: false 
+    });
+    setSelectedProvinceId('');
+    setSelectedDistrictId('');
+    setDistricts([]);
+    setWards([]);
+  };
+
+  const handleSetDefault = async (id: number) => {
+    try {
+      await AddressApi.setDefault(id.toString());
+      toast.success('Đặt địa chỉ mặc định thành công!');
+      fetchAddresses();
+    } catch (error) {
+      toast.error('Lỗi khi đặt địa chỉ mặc định!');
+    }
+  }
+
+  const handleDeleteAddress = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return;
+    try {
+      await AddressApi.delete(id.toString());
+      toast.success('Xóa địa chỉ thành công!');
+      fetchAddresses();
+    } catch (error) {
+      toast.error('Lỗi khi xóa địa chỉ!');
+  }
+
+  }
+
+  // Payments (leave as sample since no API)
   const samplePayments = [
     { id: 1, type: 'Visa', card: '**** **** **** 1234', default: true },
     { id: 2, type: 'Momo', card: 'SĐT: 0987 654 321', default: false }
   ];
 
-  const sampleOrders = [
-    { id: 'A12345', date: '2025-01-12', status: 'Đang giao', total: '2.500.000đ' },
-    { id: 'B67890', date: '2025-01-03', status: 'Hoàn thành', total: '1.200.000đ' }
+  const menu = [
+    { key: 'account', label: 'Thông tin cá nhân' },
+    { key: 'address', label: 'Địa chỉ' },
+    { key: 'payment', label: 'Phương thức thanh toán' },
+    { key: 'password', label: 'Đổi mật khẩu' },
+    { key: 'settings', label: 'Tùy chỉnh khác' },
   ];
 
   const handleMenuItemClick = (key: string) => {
@@ -358,23 +544,216 @@ const Profile: React.FC = () => {
           </form>
         );
 
-      case 'address':
+            case 'address':
         return (
           <div>
             <h2 className="text-xl font-semibold mb-4">Địa chỉ của tôi</h2>
-            {sampleAddresses.map(addr => (
-              <div key={addr.id} className="border rounded p-3 sm:p-4 mb-3 bg-white shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                <div className="flex-1">
-                  <p className="font-bold text-sm sm:text-base">{addr.name} ({addr.phone})</p>
-                  <p className="text-gray-600 text-xs sm:text-sm mt-1">{addr.address}</p>
-                  {addr.default && <span className="text-purple-600 text-xs font-semibold inline-block mt-1">Mặc định</span>}
+            {loadingAddresses ? (
+              <p>Đang tải...</p>
+            ) : (
+              addresses.map(addr => (
+                <div key={addr.id} className="border rounded p-3 sm:p-4 mb-3 bg-white shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                  <div className="flex-1">
+                    <p className="font-bold text-sm sm:text-base">{addr.name} ({addr.phone})</p>
+                    <p className="text-gray-600 text-xs sm:text-sm mt-1">{`${addr.street}, ${addr.ward}, ${addr.province}`}</p>
+                    {addr.isDefault && <span className="text-purple-600 text-xs font-semibold inline-block mt-1">Mặc định</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditAddress(addr)} className="text-purple-600 text-sm">Sửa</button>
+                    <button onClick={() => handleDeleteAddress(addr.id)} className="text-red-600 text-sm">Xóa</button>
+                    {!addr.isDefault && (
+                      <button onClick={() => handleSetDefault(addr.id)} className="text-green-600 text-sm">Đặt mặc định</button>
+                    )}
+                  </div>
                 </div>
-                <button className="text-purple-600 text-sm self-start sm:self-auto">Sửa</button>
-              </div>
-            ))}
-            <button className="mt-3 bg-purple-500 text-white px-4 py-2 rounded w-full sm:w-auto text-sm sm:text-base">
+              ))
+            )}
+            <button 
+              onClick={() => { 
+                setShowAddressForm(true); 
+                setEditingAddress(null); 
+                resetAddressForm();
+              }} 
+              className="mt-3 bg-purple-500 text-white px-4 py-2 rounded w-full sm:w-auto text-sm sm:text-base"
+            >
               + Thêm địa chỉ
             </button>
+
+            {/* Modal Overlay */}
+            {showAddressForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  {/* Modal Header */}
+                  <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 className="text-xl font-semibold text-gray-800">
+                      {editingAddress ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}
+                    </h3>
+                    <button 
+                      onClick={() => {
+                        setShowAddressForm(false);
+                        resetAddressForm();
+                      }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="px-6 py-6">
+                    <form onSubmit={handleAddressSubmit} className="grid grid-cols-1 gap-4">
+                      {/* Name Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tên người nhận <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          name="name" 
+                          value={addressForm.name} 
+                          onChange={handleAddressInputChange} 
+                          placeholder="Nhập tên người nhận" 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                          required 
+                        />
+                      </div>
+
+                      {/* Phone Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Số điện thoại <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          name="phone" 
+                          value={addressForm.phone} 
+                          onChange={handleAddressInputChange} 
+                          placeholder="Nhập số điện thoại" 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                          required 
+                        />
+                      </div>
+
+                      {/* Street Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Địa chỉ cụ thể <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          name="street" 
+                          value={addressForm.street} 
+                          onChange={handleAddressInputChange} 
+                          placeholder="Số nhà, tên đường" 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                          required 
+                        />
+                      </div>
+                      
+                      {/* Province Selector */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tỉnh / Thành phố <span className="text-red-500">*</span>
+                        </label>
+                        <select 
+                          name="province" 
+                          value={selectedProvinceId} 
+                          onChange={handleAddressInputChange} 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                          required
+                          disabled={loadingProvinces}
+                        >
+                          <option value="">-- Chọn Tỉnh / Thành phố --</option>
+                          {provinces.map(province => (
+                            <option key={province.province_id} value={province.province_id}>
+                              {province.province_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* District Selector */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Quận / Huyện <span className="text-red-500">*</span>
+                        </label>
+                        <select 
+                          name="district" 
+                          value={selectedDistrictId} 
+                          onChange={handleAddressInputChange} 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                          required
+                          disabled={!selectedProvinceId || loadingDistricts}
+                        >
+                          <option value="">-- Chọn Quận / Huyện --</option>
+                          {districts.map(district => (
+                            <option key={district.district_id} value={district.district_id}>
+                              {district.district_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Ward Selector */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Phường / Xã <span className="text-red-500">*</span>
+                        </label>
+                        <select 
+                          name="ward" 
+                          value={wards.find(w => addressForm.ward.includes(w.ward_name))?.ward_id || ''} 
+                          onChange={handleAddressInputChange} 
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                          required
+                          disabled={!selectedDistrictId || loadingWards}
+                        >
+                          <option value="">-- Chọn Phường / Xã --</option>
+                          {wards.map(ward => (
+                            <option key={ward.ward_id} value={ward.ward_id}>
+                              {ward.ward_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Default Checkbox */}
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <input 
+                          type="checkbox" 
+                          name="isDefault" 
+                          checked={addressForm.isDefault} 
+                          onChange={handleAddressInputChange}
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          id="isDefault"
+                        />
+                        <label htmlFor="isDefault" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          Đặt làm địa chỉ mặc định
+                        </label>
+                      </div>
+
+                      {/* Form Actions */}
+                      <div className="flex gap-3 pt-4">
+                        <button 
+                          type="submit" 
+                          className="flex-1 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                        >
+                          {editingAddress ? 'Cập nhật' : 'Thêm địa chỉ'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setShowAddressForm(false);
+                            resetAddressForm();
+                          }} 
+                          className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -395,28 +774,6 @@ const Profile: React.FC = () => {
             <button className="mt-3 bg-cyan-500 text-white px-4 py-2 rounded w-full sm:w-auto text-sm sm:text-base">
               + Thêm phương thức
             </button>
-          </div>
-        );
-
-      case 'orders':
-        return (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Đơn hàng của tôi</h2>
-            {sampleOrders.map(order => (
-              <div key={order.id} className="border p-3 sm:p-4 rounded bg-white shadow-sm mb-3">
-                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
-                  <p className="text-sm sm:text-base">
-                    <span className="font-semibold">Mã đơn:</span> {order.id}
-                  </p>
-                  <span className="text-xs sm:text-sm text-gray-500">{order.date}</span>
-                </div>
-                <p className="mt-1 text-xs sm:text-sm">
-                  Trạng thái: <span className="text-purple-600 font-semibold">{order.status}</span>
-                </p>
-                <p className="mt-1 font-bold text-sm sm:text-base">Tổng tiền: {order.total}</p>
-                <button className="mt-2 text-purple-600 text-xs sm:text-sm">Xem chi tiết</button>
-              </div>
-            ))}
           </div>
         );
 
