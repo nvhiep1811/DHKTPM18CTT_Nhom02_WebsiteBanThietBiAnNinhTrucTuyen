@@ -95,25 +95,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           </Link>
         </h3>
 
-        {product.reviewCount > 0 && (
-          <div className="flex items-center mb-3">
+        <div className="min-h-[1.25rem] mb-3">
+          {product.reviewCount > 0 && (
             <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-4 w-4 ${
-                    i < Math.floor(product.rating)
-                      ? 'text-yellow-400 fill-current'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${
+                      i < Math.floor(product.rating)
+                        ? 'text-yellow-400 fill-current'
+                        : 'text-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-gray-600 ml-2">
+                ({product.reviewCount})
+              </span>
             </div>
-            <span className="text-sm text-gray-600 ml-2">
-              ({product.reviewCount})
-            </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Price */}
         <div className="flex items-center justify-between mb-4">

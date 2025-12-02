@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User, X } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw, CheckCircle, User} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { cartService } from '../utils/cartService';
@@ -19,51 +19,11 @@ const ProductDetail: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [newReview, setNewReview] = useState({
-    rating: 5,
-    comment: ''
-  });
+
   const [filterRating, setFilterRating] = useState<number | null>(null);
 
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const userRole: 'guest' | 'user' | 'admin' = isAuthenticated && user ? (user.role.toLowerCase() as 'user' | 'admin') : 'guest';
-
-  const handleSubmitReview = async () => {
-    if (!newReview.comment.trim()) {
-      toast.error('Vui lòng nhập nhận xét của bạn!');
-      return;
-    }
-
-    if (newReview.comment.length > 1000) {
-      toast.error('Nhận xét không được vượt quá 1000 ký tự!');
-      return;
-    }
-
-    try {
-      const reviewData = {
-        productId: product?.id,
-        rating: newReview.rating,
-        comment: newReview.comment.trim(),
-      };
-
-      await ReviewApi.createReview(reviewData);
-      
-      toast.success('Đánh giá của bạn đã được gửi và đang chờ duyệt!');
-      handleCloseReviewModal();
-      
-      // Refresh reviews
-      if (id) {
-        const reviewsData = await ReviewApi.getReviewsByProduct(id);
-        setReviews(reviewsData || []);
-      }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error ||
-                          'Không thể gửi đánh giá. Vui lòng thử lại!';
-      toast.error(errorMessage);
-    }
-  };
 
   const fetchProductDetails = async (productId: string) => {
     try {
@@ -244,21 +204,6 @@ const ProductDetail: React.FC = () => {
   const handleWishlist = () => {
     setIsWishlisted(!isWishlisted);
     toast.success(isWishlisted ? 'Đã xóa khỏi danh sách yêu thích' : 'Đã thêm vào danh sách yêu thích');
-  };
-
-  const handleOpenReviewModal = () => {
-    if (userRole === 'guest') {
-      toast.info('Vui lòng đăng nhập để viết đánh giá!');
-      navigate('/login');
-      return;
-    }
-    
-    setIsReviewModalOpen(true);
-  };
-
-  const handleCloseReviewModal = () => {
-    setIsReviewModalOpen(false);
-    setNewReview({ rating: 5, comment: '' });
   };
 
   // Filter reviews by rating
@@ -601,13 +546,6 @@ const ProductDetail: React.FC = () => {
                 </div>
                 <span className="text-lg font-semibold text-zinc-800">{product.rating}</span>
               </div>
-              <button
-                onClick={handleOpenReviewModal}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Viết đánh giá
-              </button>
             </div>
           </div>
 
@@ -660,15 +598,6 @@ const ProductDetail: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-zinc-800">{review.userName}</span>
-                          {/* Status badge */}
-                          <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                            review.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                            review.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {review.status === 'APPROVED' ? 'Đã duyệt' :
-                             review.status === 'REJECTED' ? 'Đã từ chối' : 'Chờ duyệt'}
-                          </span>
                         </div>
                         <div className="flex items-center mt-1">
                           {[...Array(5)].map((_, i) => (
@@ -695,96 +624,6 @@ const ProductDetail: React.FC = () => {
           </div>
         </motion.div>
       </main>
-
-      {/* Review Modal */}
-      {isReviewModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Viết đánh giá sản phẩm</h3>
-              <button onClick={handleCloseReviewModal} className="text-gray-500 hover:text-gray-700">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Rating selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Đánh giá của bạn *
-                </label>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      type="button"
-                      onClick={() => setNewReview({ ...newReview, rating })}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`h-8 w-8 cursor-pointer transition-colors ${
-                          rating <= newReview.rating
-                            ? 'text-yellow-400 fill-current'
-                            : 'text-gray-300 hover:text-yellow-200'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  <span className="ml-2 text-sm text-gray-600">
-                    ({newReview.rating}/5 sao)
-                  </span>
-                </div>
-              </div>
-
-              {/* Comment */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nhận xét của bạn * <span className="text-xs text-gray-500">(tối đa 1000 ký tự)</span>
-                </label>
-                <textarea
-                  value={newReview.comment}
-                  onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  rows={5}
-                  placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
-                  maxLength={1000}
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">
-                  {newReview.comment.length}/1000 ký tự
-                </p>
-              </div>
-
-              {/* Info note */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-xs text-blue-700">
-                  <strong>Lưu ý:</strong> Đánh giá của bạn sẽ được kiểm duyệt trước khi hiển thị công khai. 
-                  Vui lòng đánh giá khách quan và trung thực.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={handleCloseReviewModal}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSubmitReview}
-                disabled={!newReview.comment.trim()}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                  !newReview.comment.trim()
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-purple-600 text-white hover:bg-purple-700'
-                }`}
-              >
-                Gửi đánh giá
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <Footer />
     </div>
   );
