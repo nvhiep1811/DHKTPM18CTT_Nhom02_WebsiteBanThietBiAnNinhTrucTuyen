@@ -3,7 +3,14 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import { Filter, Search, Grid, List, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Filter,
+  Search,
+  Grid,
+  List,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cartService } from "../utils/cartService";
 import type { Brand, CategorySummary, ProductSummary } from "../types/types";
@@ -48,7 +55,9 @@ const Products: React.FC = () => {
   const [tempMaxPrice, setTempMaxPrice] = useState<string>("");
 
   // === Stock filter state ===
-  const [stockFilter, setStockFilter] = useState<"all" | "inStock" | "outOfStock">("all");
+  const [stockFilter, setStockFilter] = useState<
+    "all" | "inStock" | "outOfStock"
+  >("all");
 
   // === Show all categories/brands ===
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -89,7 +98,8 @@ const Products: React.FC = () => {
         setTotalPages(response.page.totalPages);
         setTotalElements(response.page.totalElements);
       } catch (error: any) {
-        if (error.name === "AbortError" || error.name === "CanceledError") return;
+        if (error.name === "AbortError" || error.name === "CanceledError")
+          return;
         setProducts([]);
         setTotalPages(0);
         setTotalElements(0);
@@ -101,16 +111,16 @@ const Products: React.FC = () => {
   );
 
   const fetchFilters = async () => {
-    return Promise.all([
-      categoryApi.getAll(),
-      brandApi.getAll(),
-    ]);
+    return Promise.all([categoryApi.getAll(), brandApi.getAll()]);
   };
 
   useEffect(() => {
     fetchFilters()
       .then(([categoriesRes, brandsRes]) => {
-        setCategories([{ id: 0, name: "Tất cả" }, ...categoriesRes]);
+        setCategories([
+          { id: 0, name: "Tất cả" } as CategorySummary,
+          ...categoriesRes,
+        ]);
         setBrands([{ id: 0, name: "Tất cả" }, ...(brandsRes?.content ?? [])]);
       })
       .catch(() => {})
@@ -124,36 +134,41 @@ const Products: React.FC = () => {
 
     const abortController = new AbortController();
 
-    const timer = setTimeout(() => {
-      const params: any = { 
-        page, 
-        stockFilter: stockFilter || "all"
-      };
+    const timer = setTimeout(
+      () => {
+        const params: any = {
+          page,
+          stockFilter: stockFilter || "all",
+        };
 
-      // Chỉ thêm minPrice/maxPrice nếu có giá trị
-      if (minPrice) params.minPrice = minPrice;
-      if (maxPrice) params.maxPrice = maxPrice;
+        // Chỉ thêm minPrice/maxPrice nếu có giá trị
+        if (minPrice) params.minPrice = minPrice;
+        if (maxPrice) params.maxPrice = maxPrice;
 
-      if (selectedCategory && selectedCategory !== 0) params.categoryId = selectedCategory;
-      if (selectedBrand && selectedBrand !== 0) params.brandId = selectedBrand;
-      if (searchTerm.trim()) params.keyword = searchTerm.trim();
+        if (selectedCategory && selectedCategory !== 0)
+          params.categoryId = selectedCategory;
+        if (selectedBrand && selectedBrand !== 0)
+          params.brandId = selectedBrand;
+        if (searchTerm.trim()) params.keyword = searchTerm.trim();
 
-      switch (sortBy) {
-        case "price-low":
-          params.sort = "price,asc";
-          break;
-        case "price-high":
-          params.sort = "price,desc";
-          break;
-        case "rating":
-          params.sort = "rating,desc";
-          break;
-        default:
-          params.sort = "name,asc";
-      }
+        switch (sortBy) {
+          case "price-low":
+            params.sort = "price,asc";
+            break;
+          case "price-high":
+            params.sort = "price,desc";
+            break;
+          case "rating":
+            params.sort = "rating,desc";
+            break;
+          default:
+            params.sort = "name,asc";
+        }
 
-      fetchProducts(params, abortController.signal);
-    }, searchTerm !== keyword ? 500 : 0);
+        fetchProducts(params, abortController.signal);
+      },
+      searchTerm !== keyword ? 500 : 0
+    );
 
     return () => {
       clearTimeout(timer);
@@ -195,7 +210,9 @@ const Products: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleStockFilterChange = (filter: "all" | "inStock" | "outOfStock") => {
+  const handleStockFilterChange = (
+    filter: "all" | "inStock" | "outOfStock"
+  ) => {
     setStockFilter(filter);
     setPage(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -224,7 +241,9 @@ const Products: React.FC = () => {
     if (success) window.dispatchEvent(new Event("cartUpdated"));
   };
 
-  const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
+  const displayedCategories = showAllCategories
+    ? categories
+    : categories.slice(0, 6);
   const displayedBrands = showAllBrands ? brands : brands.slice(0, 6);
 
   return (
@@ -238,7 +257,8 @@ const Products: React.FC = () => {
             Sản Phẩm An Ninh
           </h1>
           <p className="text-gray-600">
-            Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ hiện đại
+            Khám phá bộ sưu tập thiết bị an ninh chất lượng cao với công nghệ
+            hiện đại
           </p>
         </div>
 
@@ -371,7 +391,9 @@ const Products: React.FC = () => {
                         ))}
                         {categories.length > 6 && (
                           <button
-                            onClick={() => setShowAllCategories(!showAllCategories)}
+                            onClick={() =>
+                              setShowAllCategories(!showAllCategories)
+                            }
                             className="w-full text-left px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
                           >
                             {showAllCategories ? (
@@ -609,7 +631,7 @@ const Products: React.FC = () => {
                         }}
                         onPageSizeChange={(newSize) => {
                           setPageSize(newSize);
-                          setPage(0);                          
+                          setPage(0);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                       />

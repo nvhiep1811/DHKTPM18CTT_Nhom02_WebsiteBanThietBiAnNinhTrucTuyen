@@ -1,6 +1,6 @@
 import Home from "../pages/Home";
 import Products from "../pages/Products";
-import ProductDetail from "../pages/ProductDetail";
+import ProductDetails from "../pages/ProductDetail";
 import Login from "../pages/Login";
 import Cart from "../pages/Cart";
 import OAuth2Redirect from "../pages/OAuth2Redirect";
@@ -13,12 +13,12 @@ import GuestRoute from "../routes/GuestRoute";
 import UserGuard from "../components/UserGuard";
 import Register from "../pages/Register";
 import VerifyEmail from "../pages/VerifyEmail";
-import Terms from '../pages/Terms';
-import Privacy from '../pages/Privacy';
+import Terms from "../pages/Terms";
+import Privacy from "../pages/Privacy";
 import Checkout from "../pages/Checkout";
 import OrderSuccess from "../pages/OrderSuccess";
 import VNPayReturn from "../pages/VNPayReturn";
-import { VNPAY_RETURN } from './routePaths';
+import { VNPAY_RETURN } from "./routePaths";
 import Orders from "../pages/Orders";
 import OrderDetail from "../pages/OrderDetail";
 
@@ -35,7 +35,7 @@ export const publicRoutes = {
     },
     {
       path: "products/:id",
-      element: <ProductDetail />,
+      element: <ProductDetails />,
     },
     {
       path: "cart",
@@ -134,9 +134,9 @@ export const publicRoutes = {
       ),
     },
 
-    { 
-      path: "oauth2/redirect", 
-      element: <OAuth2Redirect /> 
+    {
+      path: "oauth2/redirect",
+      element: <OAuth2Redirect />,
     },
     {
       path: "about",
@@ -148,11 +148,11 @@ export const publicRoutes = {
     },
     {
       path: "terms",
-      element: <Terms />
+      element: <Terms />,
     },
     {
       path: "privacy",
-      element: <Privacy />
-    }
+      element: <Privacy />,
+    },
   ],
 };
