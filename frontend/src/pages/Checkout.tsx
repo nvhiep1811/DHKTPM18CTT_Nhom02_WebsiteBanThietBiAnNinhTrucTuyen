@@ -83,7 +83,17 @@ const Checkout: React.FC = () => {
   const [shippingInfoBackup, setShippingInfoBackup] = useState<ShippingInfo | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
 
-  const shippingFees = { standard: 30000, express: 50000 };
+  // Calculate shipping fees based on city (HCM cheaper, outside HCM more expensive)
+  const calculateShippingFees = () => {
+    const isHCM = shippingInfo.city.toLowerCase().includes('hồ chí minh')
+    
+    return {
+      standard: isHCM ? 25000 : 40000,
+      express: isHCM ? 40000 : 65000
+    };
+  };
+
+  const shippingFees = calculateShippingFees();
 
   // Helper Functions
   const formatPrice = (price: number) => {
