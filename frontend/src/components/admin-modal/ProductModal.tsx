@@ -251,17 +251,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
         }
       } else {
         savedProduct = await productApi.create(productData);
-        if (formData.availableStock > 0 && savedProduct?.id) {
-          try {
-            await InventoryApi.create({
-              productId: savedProduct.id,
-              onHand: formData.availableStock,
-              reserved: 0
-            });
-          } catch (invError) {
-            console.error('Error creating inventory:', invError);
-          }
-        }
+        // if (formData.availableStock > 0 && savedProduct?.id) {
+        //   try {
+        //     await InventoryApi.create({
+        //       productId: savedProduct.id,
+        //       onHand: formData.availableStock,
+        //       reserved: 0
+        //     });
+        //   } catch (invError) {
+        //     console.error('Error creating inventory:', invError);
+        //   }
+        // }
       }
 
       // Delete old thumbnail if replaced

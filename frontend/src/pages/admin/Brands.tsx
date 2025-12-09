@@ -141,7 +141,7 @@ export default Brands;
 
 export async function loadData() {
   try {
-    const result = await brandApi.getAll();
+    const result = await brandApi.getAll({ page: 0, size: 100 });
     return result;
   } catch (error) {
     console.error('Error loading brands:', error);
