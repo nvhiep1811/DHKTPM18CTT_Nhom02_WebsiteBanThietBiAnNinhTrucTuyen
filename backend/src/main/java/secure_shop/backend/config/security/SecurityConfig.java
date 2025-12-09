@@ -95,15 +95,21 @@ public class SecurityConfig {
 
                         // Brand endpoints
                         .requestMatchers(HttpMethod.GET, "/api/brands", "/api/brands/**").permitAll()
-                        .requestMatchers("/api/brands/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/brands/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/brands/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/brands/**").hasRole("ADMIN")
 
                         // Category endpoints
                         .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/active", "/api/categories/**").permitAll()
-                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
 
                         // Inventory endpoints
                         .requestMatchers(HttpMethod.GET, "/api/inventories", "/api/inventories/**").permitAll()
-                        .requestMatchers("/api/inventories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/inventories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/inventories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/inventories/**").hasRole("ADMIN")
 
                         // === Media Asset endpoints ===
                         .requestMatchers(HttpMethod.GET, "/api/media/product/**").permitAll()

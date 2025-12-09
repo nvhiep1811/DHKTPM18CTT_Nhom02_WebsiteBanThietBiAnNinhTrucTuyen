@@ -49,9 +49,14 @@ api.interceptors.request.use(
     const isPublicGet =
       method === "get" && PUBLIC_GET_PATHS.some((path) => url.startsWith(path));
 
-    // Attach token nếu có và không phải public GET
-    if (token && !isPublicGet) {
+    // LUÔN gửi token nếu có (trừ khi là public GET endpoint)
+    if (token) {
+      // Nếu không phải public GET, bắt buộc phải có token
+      // Nếu là public GET, vẫn gửi token nếu có (để backend biết user đã login)
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (!isPublicGet) {
+      // Nếu không có token và không phải public GET, đây là lỗi
+      console.warn(`No token available for ${method?.toUpperCase()} ${url}`);
     }
 
     return config;

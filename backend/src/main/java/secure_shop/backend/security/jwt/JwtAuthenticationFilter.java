@@ -29,8 +29,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserService userService;
 
-    private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
-            // 🔐 AUTH - PUBLIC ENDPOINTS
+    // Các endpoint thực sự public không cần xác thực (chủ yếu là auth endpoints)
+    private static final List<String> ALWAYS_PUBLIC_PATHS = List.of(
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/refresh",
@@ -39,51 +39,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/forgot-password",
             "/api/auth/verify-token",
             "/api/auth/reset-password",
-
-            // 📄 ARTICLES - PUBLIC VIEW
-            "/api/articles",
-            "/api/articles/",
-
-            // 🏷️ BRANDS - PUBLIC VIEW
-            "/api/brands",
-            "/api/brands/",
-
-            // 📂 CATEGORIES - PUBLIC VIEW
-            "/api/categories",
-            "/api/categories/active",
-            "/api/categories/",
-
-            // 🧮 INVENTORIES - PUBLIC VIEW
-            "/api/inventories",
-            "/api/inventories/",
-
-            // 🖼️ MEDIA - PUBLIC (upload/view handled by Supabase)
-            "/api/media",
-            "/api/media/",
-
-            // 🛒 PRODUCTS - PUBLIC GET
-            "/api/products",
-            "/api/products/",
-            "/api/products/summary/",
-
-            // 💬 REVIEWS - PUBLIC GET (product reviews)
-            "/api/reviews/product/",
-
-            // 🎁 DISCOUNTS - PUBLIC GET
-            "/api/discounts/active",
-            "/api/discounts/code/**",
-
-            // 🤖 CHAT BOT - PUBLIC ACCESS
-            "/api/chat/ask",
-
-            // 🌐 OAUTH & ERROR
             "/oauth2/",
             "/login/oauth2/",
-            "/error"
+            "/error",
+            "/api/chat/ask"
     );
 
-    private boolean isPublicEndpoint(String path) {
-        return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    // Các endpoint cho phép GET public nhưng POST/PUT/DELETE cần admin
+    private static final List<String> PUBLIC_READ_ONLY_PATHS = List.of(
+            "/api/articles",
+            "/api/brands",
+            "/api/categories",
+            "/api/inventories",
+            "/api/media/product/",
+            "/api/products",
+            "/api/reviews/product/",
+            "/api/discounts/active",
+            "/api/discounts/code/"
+    );
+
+    private boolean isPublicEndpoint(String path, String method) {
+        // Luôn public cho mọi method
+        if (ALWAYS_PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+            return true;
+        }
+        
+        // Chỉ public cho GET method
+        if ("GET".equalsIgnoreCase(method)) {
+            return PUBLIC_READ_ONLY_PATHS.stream().anyMatch(path::startsWith);
+        }
+        
+        return false;
     }
 
     @Override
@@ -98,11 +84,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        log.debug("Processing path: {}", path);
+        String method = request.getMethod();
+        log.debug("Processing {} {}", method, path);
 
-        // CẢI TIẾN: PUBLIC ENDPOINT = TẤT CẢ METHOD
-        if (isPublicEndpoint(path)) {
-            log.debug("Public endpoint - skipping JWT: {}", path);
+        // Kiểm tra endpoint public dựa trên path VÀ method
+        if (isPublicEndpoint(path, method)) {
+            log.debug("Public endpoint - skipping JWT: {} {}", method, path);
             chain.doFilter(request, response);
             return;
         }
