@@ -9,6 +9,7 @@ export interface ProductQueryParams {
   page?: number;
   size?: number;
   sort?: string;
+  stockFilter?: string;
 }
 
 export interface BrandQueryParams {
