@@ -12,6 +12,7 @@ import secure_shop.backend.dto.order.request.OrderItemRequest;
 import secure_shop.backend.entities.*;
 import secure_shop.backend.enums.OrderStatus;
 import secure_shop.backend.enums.PaymentMethod;
+import secure_shop.backend.enums.PaymentStatus;
 import secure_shop.backend.exception.BusinessRuleViolationException;
 import secure_shop.backend.exception.ResourceNotFoundException;
 import secure_shop.backend.mapper.OrderMapper;
@@ -37,6 +38,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
     private final EmailService emailService;
@@ -243,6 +245,13 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", id));
 
+        Payment payment = null;
+        try {
+            payment = paymentRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Payment", id));
+        } catch (Exception ignored) {
+        }
+
         // Validate that order can be cancelled
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new BusinessRuleViolationException("Order already cancelled");
@@ -275,6 +284,16 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelledAt(Instant.now());
+
+        // If order was already paid, mark payment as refunded
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+
+            if (payment != null) {
+                payment.setStatus(PaymentStatus.REFUNDED);
+                paymentRepository.save(payment);
+            }
+        }
 
         Order updatedOrder = orderRepository.save(order);
         return orderMapper.toDTO(updatedOrder);
