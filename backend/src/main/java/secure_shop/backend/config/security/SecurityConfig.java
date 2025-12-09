@@ -42,6 +42,7 @@ public class SecurityConfig {
     private final OAuth2FailureHandler oauthFailureHandler;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final RedisOAuth2AuthorizationRequestRepository redisOAuth2AuthorizationRequestRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -194,7 +195,8 @@ public class SecurityConfig {
                 // 5. OAuth2 Login Configuration
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(authorization -> authorization
-                                .baseUri("/oauth2/authorize"))
+                                .baseUri("/oauth2/authorize")
+                                .authorizationRequestRepository(redisOAuth2AuthorizationRequestRepository))
                         .redirectionEndpoint(redirection -> redirection
                                 .baseUri("/login/oauth2/code/*"))
                         .successHandler(oauthSuccessHandler)
