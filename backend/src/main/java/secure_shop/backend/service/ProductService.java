@@ -31,4 +31,5 @@ public interface ProductService {
                                            String keyword,
                                            Pageable pageable);
 
+    Integer getTotalProductsCount();
 }

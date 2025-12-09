@@ -29,4 +29,8 @@ public interface OrderService {
     OrderDTO confirmOrder(UUID id);
 
     OrderDTO cancelOrder(UUID id);
+
+    OrderDTO changeOrderStatus(UUID id, String status);
+
+    Integer getTotalOrdersCount();
 }

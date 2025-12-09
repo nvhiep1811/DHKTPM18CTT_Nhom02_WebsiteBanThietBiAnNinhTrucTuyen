@@ -351,4 +351,50 @@ public class OrderServiceImpl implements OrderService {
         // scale 2
         return discountAmount.setScale(2, RoundingMode.HALF_UP);
     }
+
+    @Override
+    public OrderDTO changeOrderStatus(UUID id, String status) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
+
+        // Validate status
+        OrderStatus newStatus;
+        try {
+            newStatus = OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleViolationException("Invalid order status: " + status);
+        }
+
+        // Validate that order can be changed
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessRuleViolationException("Cannot change status of cancelled order");
+        }
+
+        // Check payment method
+        Payment payment = order.getPayment();
+        boolean isCOD = payment != null && payment.getMethod() == PaymentMethod.COD;
+
+        // Update status
+        order.setStatus(newStatus);
+
+        // For COD payment: if status is DELIVERED, update payment-related fields
+        if (isCOD && newStatus == OrderStatus.DELIVERED) {
+            order.setHasPaid(true);
+            order.setPaymentStatus(secure_shop.backend.enums.PaymentStatus.PAID);
+            if (order.getConfirmedAt() == null) {
+                order.setConfirmedAt(Instant.now());
+            }
+            // Also update payment entity status
+            payment.setStatus(secure_shop.backend.enums.PaymentStatus.PAID);
+            payment.setPaidAt(Instant.now());
+        }
+
+        Order updatedOrder = orderRepository.save(order);
+        return orderMapper.toDTO(updatedOrder);
+    }
+
+    @Override
+    public Integer getTotalOrdersCount() {
+        return orderRepository.countOrdersByCreatedAtIsNotNull();
+    }
 }

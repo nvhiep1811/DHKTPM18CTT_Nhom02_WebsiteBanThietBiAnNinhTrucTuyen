@@ -48,29 +48,29 @@ const Promotions: React.FC<Props> = ({ data, onReload }) => {
     return filtered;
   }, [discounts, searchTerm, statusFilter]);
 
-  const handleDeleteDiscount = (discount: Discount) => {
-    setConfirmDialog({ open: true, discount });
-  };
+  // const handleDeleteDiscount = (discount: Discount) => {
+  //   setConfirmDialog({ open: true, discount });
+  // };
 
-  const confirmDelete = async () => {
-    if (!confirmDialog.discount) return;
+  // const confirmDelete = async () => {
+  //   if (!confirmDialog.discount) return;
 
-    try {
-      await DiscountApi.delete(confirmDialog.discount.id);
-      toast.success('Đã xóa khuyến mãi thành công');
-      setConfirmDialog({ open: false });
-      onReload?.();
-    } catch (error: any) {
-      console.error('Error deleting discount:', error);
-      if (error.response?.status === 401) {
-        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-      } else if (error.response?.status === 403) {
-        toast.error('Bạn không có quyền thực hiện thao tác này.');
-      } else {
-        toast.error('Có lỗi xảy ra khi xóa khuyến mãi');
-      }
-    }
-  };
+  //   try {
+  //     await DiscountApi.delete(confirmDialog.discount.id);
+  //     toast.success('Đã xóa khuyến mãi thành công');
+  //     setConfirmDialog({ open: false });
+  //     onReload?.();
+  //   } catch (error: any) {
+  //     console.error('Error deleting discount:', error);
+  //     if (error.response?.status === 401) {
+  //       toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+  //     } else if (error.response?.status === 403) {
+  //       toast.error('Bạn không có quyền thực hiện thao tác này.');
+  //     } else {
+  //       toast.error('Có lỗi xảy ra khi xóa khuyến mãi');
+  //     }
+  //   }
+  // };
 
   const handleCreateDiscount = () => {
     setDiscountModal({ open: true });
@@ -160,12 +160,12 @@ const Promotions: React.FC<Props> = ({ data, onReload }) => {
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button 
+                  {/* <button 
                     onClick={() => handleDeleteDiscount(discount)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
@@ -178,7 +178,7 @@ const Promotions: React.FC<Props> = ({ data, onReload }) => {
       </div>
 
       {/* Confirm Dialog */}
-      <ConfirmDialog
+      {/* <ConfirmDialog
         open={confirmDialog.open}
         title="Xác nhận xóa khuyến mãi"
         message={`Bạn có chắc chắn muốn xóa khuyến mãi "${confirmDialog.discount?.code}"? Hành động này không thể hoàn tác.`}
@@ -186,7 +186,7 @@ const Promotions: React.FC<Props> = ({ data, onReload }) => {
         cancelText="Hủy"
         onConfirm={confirmDelete}
         onCancel={() => setConfirmDialog({ open: false })}
-      />
+      /> */}
 
       {/* Discount Modal */}
       <DiscountModal
