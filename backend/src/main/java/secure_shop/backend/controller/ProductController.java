@@ -70,5 +70,11 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/count")
+    public ResponseEntity<Integer> getTotalProductsCount() {
+        Integer count = productService.getTotalProductsCount();
+        return ResponseEntity.ok(count);
+    }
 }
 

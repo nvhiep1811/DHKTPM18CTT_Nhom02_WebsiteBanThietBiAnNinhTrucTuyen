@@ -46,19 +46,40 @@ public class ReviewServiceImpl implements ReviewService {
         Product product = productRepository.findById(reviewDTO.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product", reviewDTO.getProductId()));
 
-        // Find a completed order item for this user and product
-        OrderItem orderItem = orderItemRepository
-                .findByUserAndProductAndOrderStatus(
-                        user.getId(),
-                        product.getId(),
-                        OrderStatus.DELIVERED
-                )
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new UnauthorizedException(
-                        "Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng"));
+        // FIXED: If orderItem is provided, use that specific order item
+        OrderItem orderItem;
+        if (reviewDTO.getOrderItem() != null) {
+            orderItem = orderItemRepository.findById(reviewDTO.getOrderItem())
+                    .orElseThrow(() -> new ResourceNotFoundException("OrderItem", reviewDTO.getOrderItem()));
 
-        // Check if user already reviewed this order item
+            // Verify the order item belongs to the user and product
+            if (!orderItem.getOrder().getUser().getId().equals(user.getId())) {
+                throw new UnauthorizedException("Order item không thuộc về bạn");
+            }
+
+            if (!orderItem.getProduct().getId().equals(product.getId())) {
+                throw new UnauthorizedException("Order item không chứa sản phẩm này");
+            }
+
+            if (orderItem.getOrder().getStatus() != OrderStatus.DELIVERED) {
+                throw new UnauthorizedException("Chỉ có thể đánh giá đơn hàng đã giao");
+            }
+        } else {
+            // Legacy: Find any delivered order item (not recommended)
+            orderItem = orderItemRepository
+                    .findByUserAndProductAndOrderStatus(
+                            user.getId(),
+                            product.getId(),
+                            OrderStatus.DELIVERED
+                    )
+                    .stream()
+                    .filter(oi -> !reviewRepository.existsByOrderItemId(oi.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new UnauthorizedException(
+                            "Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng"));
+        }
+
+        // Check if user already reviewed this specific order item
         if (reviewRepository.existsByOrderItemId(orderItem.getId())) {
             throw new UnauthorizedException("Bạn đã đánh giá sản phẩm này rồi");
         }

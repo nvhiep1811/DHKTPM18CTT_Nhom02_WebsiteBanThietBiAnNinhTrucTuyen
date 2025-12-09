@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Eye, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import type { Order } from '../../types/types';
 import { orderApi } from '../../utils/api';
@@ -19,6 +19,15 @@ const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedStatuses, setSelectedStatuses] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const initialStatuses: Record<string, string> = {};
+    orders.forEach((order: Order) => {
+      initialStatuses[order.id] = order.status;
+    });
+    setSelectedStatuses(initialStatuses);
+  }, [orders]);
 
   const handleViewDetails = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -66,6 +75,7 @@ const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig: any = {
       PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock, label: 'Chờ xử lý' },
+      CONFIRMED: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle, label: 'Đã xác nhận' },
       WAITING_FOR_DELIVERY: { bg: 'bg-blue-100', text: 'text-blue-800', icon: Package, label: 'Chờ giao hàng' },
       IN_TRANSIT: { bg: 'bg-purple-100', text: 'text-purple-800', icon: Package, label: 'Đang giao' },
       DELIVERED: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle, label: 'Đã giao' },
@@ -105,6 +115,7 @@ const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="PENDING">Chờ xử lý</option>
+            <option value="CONFIRMED">Đã xác nhận</option>
             <option value="WAITING_FOR_DELIVERY">Chờ giao hàng</option>
             <option value="IN_TRANSIT">Đang giao</option>
             <option value="DELIVERED">Đã giao</option>
@@ -135,7 +146,7 @@ const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
                   <td className="px-6 py-4 text-sm">{getStatusBadge(order.status)}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td className="px-6 py-4 text-sm text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-col gap-2 items-end">
                       <button 
                         onClick={() => handleViewDetails(order.id)}
                         className="inline-flex items-center gap-1 px-3 py-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
@@ -143,38 +154,35 @@ const Orders: React.FC<Props> = ({ data, onReload, onPageChange }) => {
                         <Eye className="w-4 h-4" />
                         <span>Chi tiết</span>
                       </button>
-                      {order.status === 'PENDING' && (
-                        <>
-                          <button 
-                            className="inline-flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            onClick={async () => {
-                              try {
-                                await orderApi.confirmOrder(order.id);
-                                onReload?.();
-                              } catch (error) {
-                                console.error('Failed to confirm order:', error);
-                              }
-                            }}
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Xác nhận</span>
-                          </button>
-                          <button 
-                            className="inline-flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            onClick={async () => {
-                              try {
-                                await orderApi.cancelOrder(order.id);
-                                onReload?.();
-                              } catch (error) {
-                                console.error('Failed to cancel order:', error);
-                              }
-                            }}
-                          >
-                            <XCircle className="w-4 h-4" />
-                            <span>Hủy</span>
-                          </button>
-                        </>
-                      )}
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={selectedStatuses[order.id] || order.status}
+                          onChange={(e) => setSelectedStatuses(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="PENDING">Chờ xử lý</option>
+                          <option value="CONFIRMED">Đã xác nhận</option>
+                          <option value="WAITING_FOR_DELIVERY">Chờ giao hàng</option>
+                          <option value="IN_TRANSIT">Đang giao</option>
+                          <option value="DELIVERED">Đã giao</option>
+                          <option value="CANCELLED">Đã hủy</option>
+                        </select>
+                        <button
+                          onClick={async () => {
+                            const newStatus = selectedStatuses[order.id] || order.status;
+                            if (newStatus === order.status) return; // No change
+                            try {
+                              await orderApi.updateOrderStatus(order.id, newStatus);
+                              onReload?.();
+                            } catch (error) {
+                              console.error('Failed to update order status:', error);
+                            }
+                          }}
+                          className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                        >
+                          Cập nhật
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -216,7 +224,7 @@ export default Orders;
 
 export async function loadData(page: number = 0, size: number = 20) {
   try {
-    const response = await orderApi.getAll({ page, size });
+    const response = await orderApi.getAll({ page, size, sort: 'createdAt,DESC' });
     return response;
   } catch (error) {
     console.error('Failed to load orders:', error);

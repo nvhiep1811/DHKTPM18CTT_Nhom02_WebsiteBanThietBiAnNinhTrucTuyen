@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:12345/api";
 // 1. Axios cho AUTH (có token)
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 20000,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
@@ -14,7 +14,7 @@ export const api = axios.create({
 // 2. Axios cho PUBLIC (không gửi token)
 export const publicApi = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 20000,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });

@@ -23,17 +23,23 @@ export default function Orders() {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
+        console.log('Fetching orders...'); // Debug log
         const data = await orderApi.getOrders();
+        console.log('Orders received:', data); // Debug log
         if (!mounted) return;
         setOrders(data || []);
       } catch (e: any) {
-        setError(e?.response?.data?.message || "Không thể tải đơn hàng");
+        console.error('Full error:', e); // Log full error
+        console.error('Error response:', e.response); // Log response
+        console.error('Error message:', e.message); // Log message
+        setError(e?.response?.data?.message || e.message || "Không thể tải đơn hàng");
       } finally {
         setLoading(false);
       }
@@ -42,6 +48,28 @@ export default function Orders() {
       mounted = false;
     };
   }, []);
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!orderId) return;
+
+    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
+
+    setCancellingId(orderId);
+    try {
+      await orderApi.cancelOrder(orderId);
+      // Refresh orders list
+      const data = await orderApi.getOrders();
+      setOrders(data || []);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Không thể hủy đơn hàng");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const canCancelOrder = (status?: string) => {
+    return ["PENDING", "CONFIRMED", "IN_TRANSIT"].includes(status || "");
+  };
 
   if (loading) {
     return (
@@ -104,15 +132,41 @@ export default function Orders() {
                     <td className="px-4 py-3"><PaymentBadge value={o.paymentStatus} /></td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-800">{formatCurrency(o.grandTotal)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => navigate(`/orders/${o.id}`)}
-                        className="group px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[.96] transition inline-flex items-center gap-1 shadow-sm"
-                      >
-                        <span>Xem</span>
-                        <svg className="w-4 h-4 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => navigate(`/orders/${o.id}`)}
+                          className="group px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[.96] transition inline-flex items-center gap-1 shadow-sm"
+                        >
+                          <span>Xem</span>
+                          <svg className="w-4 h-4 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </button>
+                        {canCancelOrder(o.status) && (
+                          <button
+                            onClick={() => handleCancelOrder(o.id)}
+                            disabled={cancellingId === o.id}
+                            className="px-3 py-1.5 text-sm rounded-md bg-red-50 text-red-600 hover:bg-red-100 active:scale-[.96] transition inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {cancellingId === o.id ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                <span>Đang hủy...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span>Hủy</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -144,8 +198,6 @@ function formatCurrency(n?: number) {
   }
 }
 
-// (legacy) badgeForPayment kept for reference; replaced by PaymentBadge component
-
 function HeaderBar() {
   return (
     <div className="flex items-center justify-between">
@@ -165,8 +217,15 @@ function HeaderBar() {
 
 function StatusBadge({ value }: { value?: string }) {
   if (!value) return null;
+  
+  let colorClass = "bg-blue-50 text-blue-700";
+  if (value === "DELIVERED") colorClass = "bg-green-50 text-green-700";
+  else if (value === "CANCELLED") colorClass = "bg-red-50 text-red-700";
+  else if (value === "IN_TRANSIT" || value === "WAITING_FOR_DELIVERY") colorClass = "bg-orange-50 text-orange-700";
+  else if (value === "CONFIRMED") colorClass = "bg-teal-50 text-teal-700";
+  
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${colorClass}`}>
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
       </svg>
@@ -178,10 +237,21 @@ function StatusBadge({ value }: { value?: string }) {
 function PaymentBadge({ value }: { value?: string }) {
   if (!value) return null;
   let base = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ";
-  let iconPath = "M5 13l4 4L19 7"; // check
-  if (value === "PAID") base += "bg-green-50 text-green-700";
-  else if (value === "FAILED") { base += "bg-red-50 text-red-700"; iconPath = "M6 18L18 6M6 6l12 12"; }
-  else { base += "bg-yellow-50 text-yellow-700"; iconPath = "M12 8v4l2 2"; }
+  let iconPath = "M5 13l4 4L19 7";
+  
+  if (value === "PAID") {
+    base += "bg-green-50 text-green-700";
+  } else if (value === "FAILED") {
+    base += "bg-red-50 text-red-700";
+    iconPath = "M6 18L18 6M6 6l12 12";
+  } else if (value === "REFUNDED") {
+    base += "bg-purple-50 text-purple-700";
+    iconPath = "M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3";
+  } else {
+    base += "bg-yellow-50 text-yellow-700";
+    iconPath = "M12 8v4l2 2";
+  }
+  
   return (
     <span className={base}>
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

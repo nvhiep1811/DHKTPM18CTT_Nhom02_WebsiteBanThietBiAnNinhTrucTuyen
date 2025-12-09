@@ -1,11 +1,6 @@
 package secure_shop.backend.dto.product;
 
-import jakarta.validation.constraints.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import secure_shop.backend.entities.Review;
+import lombok.*;
 import secure_shop.backend.enums.ReviewStatus;
 
 import java.io.Serializable;
@@ -13,11 +8,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * DTO for {@link Review}
+ * DTO for {@link secure_shop.backend.entities.Review}
  */
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class ReviewDTO implements Serializable {
     private Long id;
@@ -25,8 +20,18 @@ public class ReviewDTO implements Serializable {
     private String comment;
     private ReviewStatus status;
     private Instant createdAt;
+
+    // Foreign keys
     private UUID productId;
     private UUID userId;
-    private String userName;
+
+    /**
+     * The specific order item being reviewed
+     * This ensures one review per order item
+     */
     private Long orderItem;
+
+    // Nested objects for display (optional)
+    private String userName;
+    private String productName;
 }

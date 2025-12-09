@@ -50,6 +50,10 @@ public class OrderMapper {
                 .shippingAddress(order.getShippingAddress())
                 .discount(order.getDiscount() != null ? discountMapper.toDTO(order.getDiscount()) : null)
                 .user(order.getUser() != null ? userMapper.toSummaryDTO(order.getUser()) : null)
+                .orderItems(order.getOrderItems() != null ?
+                        order.getOrderItems().stream()
+                                .map(orderItemMapper::toDTO)
+                                .collect(Collectors.toSet()) : null) // Add this line
                 .build();
     }
 

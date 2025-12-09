@@ -12,7 +12,8 @@ import {
   FileText, 
   MessageSquare, 
   BarChart3,
-  Warehouse
+  Warehouse,
+  Star
 } from 'lucide-react';
 
 // Type for admin modules
@@ -32,7 +33,8 @@ type TabKey =
   | 'users'
   | 'articles'
   | 'tickets'
-  | 'analytics';
+  | 'analytics'
+  | 'reviews';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'dashboard', label: 'Tổng quan', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -45,6 +47,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'users', label: 'Người dùng', icon: <Users className="w-5 h-5" /> },
   { key: 'articles', label: 'Bài viết', icon: <FileText className="w-5 h-5" /> },
   { key: 'tickets', label: 'Hỗ trợ', icon: <MessageSquare className="w-5 h-5" /> },
+  { key: 'reviews', label: 'Đánh giá', icon: <Star className="w-5 h-5" /> },
   { key: 'analytics', label: 'Thống kê', icon: <BarChart3 className="w-5 h-5" /> },
 ];
 
@@ -192,6 +195,15 @@ const Admin: React.FC = () => {
           }
           case 'analytics': {
             const mod = await import('./admin/Analytics') as AdminModule;
+            if (!mounted) return;
+            setLoadedComponent(() => mod.default);
+            // Analytics component loads its own data via useEffect
+            setCurrentLoadData(() => () => Promise.resolve(null));
+            setData(null);
+            break;
+          }
+          case 'reviews': {
+            const mod = await import('./admin/Reviews') as AdminModule;
             if (!mounted) return;
             setLoadedComponent(() => mod.default);
             setCurrentLoadData(() => mod.loadData || (() => Promise.resolve(null)));

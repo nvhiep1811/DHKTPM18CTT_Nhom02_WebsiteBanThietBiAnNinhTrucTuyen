@@ -5,10 +5,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { logout, restoreAuthSuccess } from '../stores/authSlice';
 import { toast } from 'react-toastify';
-import { userApi, AddressApi } from '../utils/api';
+import { userApi, AddressApi, ReviewApi } from '../utils/api';
 import axiosInstance from '../utils/axiosConfig';
 import { authService } from '../utils/authService';
 import { imageUploadService } from '../utils/imageUploadService';
+import {
+  Star,
+  CheckCircle,
+  XCircle,
+  Clock
+} from 'lucide-react';
 
 interface Address {
   id: number;
@@ -20,6 +26,16 @@ interface Address {
   isDefault: boolean;
 }
 
+interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  productName?: string;
+}
+
+
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('account');
@@ -27,6 +43,42 @@ const Profile: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [editRating, setEditRating] = useState(5);
+  const [editComment, setEditComment] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleEditReview = (review: Review) => {
+  setEditingReview(review);
+  setEditRating(review.rating);
+  setEditComment(review.comment);
+  };
+
+  const handleUpdateReview = async () => {
+    if (!editingReview) return;
+
+    try {
+      setSavingEdit(true);
+
+      await ReviewApi.updateReview(editingReview.id, {
+        rating: editRating,
+        comment: editComment
+      });
+
+      toast.success('Cập nhật đánh giá thành công!');
+      setEditingReview(null);
+      fetchMyReviews(); // refresh list
+    } catch {
+      toast.error('Cập nhật đánh giá thất bại!');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
 
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
@@ -53,6 +105,24 @@ const Profile: React.FC = () => {
     phone: user?.phone || '',
     avatarUrl: user?.avatarUrl || '',
   });
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && user?.id) {
+      fetchMyReviews();
+    }
+  }, [activeTab, user]);
+
+  const fetchMyReviews = async () => {
+    try {
+      setLoadingReviews(true);
+      const data = await ReviewApi.getReviewsByUser(user!.id);
+      setReviews(data);
+    } catch {
+      toast.error('Không thể tải đánh giá');
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   // Update formData when user changes
   useEffect(() => {
@@ -435,6 +505,7 @@ const Profile: React.FC = () => {
 
   const menu = [
     { key: 'account', label: 'Thông tin cá nhân' },
+    { key: 'reviews', label: 'Đánh giá của tôi' },
     { key: 'address', label: 'Địa chỉ' },
     { key: 'payment', label: 'Phương thức thanh toán' },
     { key: 'password', label: 'Đổi mật khẩu' },
@@ -544,7 +615,151 @@ const Profile: React.FC = () => {
           </form>
         );
 
-            case 'address':
+        case 'reviews':
+        return (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Đánh giá của tôi</h2>
+
+            {/* FILTER */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  className={`px-4 py-1.5 rounded-full text-sm
+                    ${filterStatus === s
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            
+
+            {loadingReviews ? (
+              <p>Đang tải đánh giá...</p>
+            ) : reviews.length === 0 ? (
+              <p>Bạn chưa có đánh giá nào</p>
+            ) : (
+              reviews
+                .filter(
+                  r => filterStatus === 'ALL' || r.status === filterStatus
+                )
+                .map(review => (
+                  <div
+                    key={review.id}
+                    className="border p-4 rounded mb-4 bg-white"
+                  >
+                    <div className="flex justify-between">
+                      <h3 className="font-semibold">
+                        {review.productName || 'Sản phẩm'}
+                      </h3>
+                      <span className="text-xs text-gray-500">
+                        {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+
+                    {/* STARS */}
+                    <div className="flex gap-1 my-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < review.rating
+                              ? 'text-yellow-400 fill-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <p className="text-gray-700">{review.comment}</p>
+
+                    {/* STATUS */}
+                    <div className="mt-2 text-sm flex items-center gap-1">
+                      {review.status === 'PENDING' && (
+                        <span className="text-yellow-600 flex gap-1">
+                          <Clock size={14} /> Chờ duyệt
+                        </span>
+                      )}
+                      {review.status === 'APPROVED' && (
+                        <span className="text-green-600 flex gap-1">
+                          <CheckCircle size={14} /> Đã duyệt
+                        </span>
+                      )}
+                      {review.status === 'REJECTED' && (
+                        <span className="text-red-600 flex gap-1">
+                          <XCircle size={14} /> Từ chối
+                        </span>
+                      )}
+                    </div>
+
+                    {review.status === 'PENDING' && (
+                      <button
+                        onClick={() => handleEditReview(review)}
+                        className="text-indigo-600 text-sm hover:underline mt-2 right-auto block"
+                      >
+                        Chỉnh sửa
+                      </button>
+                    )}
+
+                    {editingReview && (
+                      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                          <h3 className="text-lg font-semibold mb-4">Chỉnh sửa đánh giá</h3>
+
+                          {/* Rating */}
+                          <div className="flex gap-1 mb-3">
+                            {[1, 2, 3, 4, 5].map(i => (
+                              <Star
+                                key={i}
+                                onClick={() => setEditRating(i)}
+                                className={`w-6 h-6 cursor-pointer ${
+                                  i <= editRating
+                                    ? 'text-yellow-400 fill-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Comment */}
+                          <textarea
+                            value={editComment}
+                            onChange={e => setEditComment(e.target.value)}
+                            className="w-full border rounded p-2 mb-4"
+                            rows={4}
+                          />
+
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingReview(null)}
+                              className="px-4 py-2 border rounded"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              onClick={handleUpdateReview}
+                              disabled={savingEdit}
+                              className="px-4 py-2 bg-purple-600 text-white rounded disabled:opacity-50"
+                            >
+                              {savingEdit ? 'Đang lưu...' : 'Lưu'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+
+                  </div>
+                ))
+            )}
+          </div>
+        );
+
+        case 'address':
         return (
           <div>
             <h2 className="text-xl font-semibold mb-4">Địa chỉ của tôi</h2>

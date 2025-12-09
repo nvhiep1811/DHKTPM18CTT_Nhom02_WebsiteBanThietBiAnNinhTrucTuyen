@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import secure_shop.backend.dto.user.UserSummaryDTO;
 import secure_shop.backend.dto.discount.DiscountDTO;
+import secure_shop.backend.dto.order.OrderItemDTO;
 import secure_shop.backend.enums.OrderStatus;
 import secure_shop.backend.enums.PaymentStatus;
 
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -40,4 +42,5 @@ public class OrderDTO implements Serializable {
 
     private DiscountDTO discount;
     private UserSummaryDTO user;
+    private Set<OrderItemDTO> orderItems; // Add this line
 }
