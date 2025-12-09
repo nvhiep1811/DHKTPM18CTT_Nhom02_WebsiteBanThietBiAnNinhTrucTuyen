@@ -30,6 +30,7 @@ export interface ProductSummary {
   brand?: Brand;
   rating: number;
   reviewCount: number;
+  sales?: number;
 }
 
 export interface CategorySummary {
@@ -177,11 +178,12 @@ export interface Order {
   id: string;
   status:
     | "PENDING"
+    | "CONFIRMED"
     | "WAITING_FOR_DELIVERY"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
-  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
+  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED" | "PENDING" | "PROCESSING" | "PARTIAL_REFUND";
 
   subTotal: number;
   discountTotal: number;
@@ -206,7 +208,7 @@ export interface Payment {
   updatedAt: string; // ISO date string
   method: "COD" | "BANK_TRANSFER" | "E_WALLET";
   provider: "MOMO" | "VNPAY" | "NONE";
-  status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
+  status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED" | "PENDING" | "PROCESSING" | "PARTIAL_REFUND";
   amount: number;
   transactionId?: string;
   paidAt?: string; // ISO date string
@@ -235,11 +237,12 @@ export interface OrderDetails {
   id: string;
   status:
     | "PENDING"
+    | "CONFIRMED"
     | "WAITING_FOR_DELIVERY"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
-  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
+  paymentStatus: "UNPAID" | "PAID" | "FAILED" | "REFUNDED" | "PENDING" | "PROCESSING" | "PARTIAL_REFUND";
 
   subTotal: number;
   discountTotal: number;
@@ -273,4 +276,49 @@ export interface OrderCreateRequest {
   discountCode?: string;
   shippingAddress: Record<string, string>;
   userId?: string;
+}
+
+export interface AnalyticsData {
+  // Thống kê tổng quan
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  avgOrderValue: number;
+  totalProducts: number;
+  inStockProducts: number;
+  outOfStockProducts: number;
+  totalUsers: number;
+  activeUsers: number;
+  conversionRate: number;
+
+  // Top sản phẩm
+  topProducts: ProductSummary[];
+
+  // Đơn hàng gần đây
+  recentOrders: Order[];
+
+  // Dữ liệu biểu đồ
+  revenueChartData: RevenueChartData[];
+  orderStatusChartData: OrderStatusChartData[];
+  topProductsChartData: TopProductChartData[];
+}
+
+export interface RevenueChartData {
+  date: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface OrderStatusChartData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface TopProductChartData {
+  name: string;
+  reviews: number;
+  rating: number;
 }

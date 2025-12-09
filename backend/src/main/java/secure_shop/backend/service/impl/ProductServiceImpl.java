@@ -191,4 +191,9 @@ public class ProductServiceImpl implements ProductService {
     public Boolean existsById(UUID id) {
         return productRepository.existsById(id);
     }
+
+    @Override
+    public Integer getTotalProductsCount() {
+        return productRepository.countProductsNotDeleted();
+    }
 }

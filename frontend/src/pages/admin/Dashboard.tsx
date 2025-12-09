@@ -131,8 +131,8 @@ export async function loadData() {
     const { orderApi, productApi, userApi, InventoryApi } = await import('../../utils/api');
     
     const [ordersResponse, productsResponse, usersResponse, inventoriesResponse] = await Promise.all([
-      orderApi.getAll(),
-      productApi.getAll({ page: 0, size: 1000 }),
+      orderApi.getAll({ page: 0, size: 20 }), 
+      productApi.getAll({ page: 0, size: 20 }),
       userApi.getAllUsers(),
       InventoryApi.getAll().catch((err) => {
         console.error('Inventory API error:', err);
@@ -147,8 +147,8 @@ export async function loadData() {
 
     // Tính toán thống kê
     const totalUsers = users.length;
-    const totalOrders = orders.length;
-    const totalProducts = products.length;
+    const totalOrders = await orderApi.countOrders();
+    const totalProducts = await productApi.countProducts();
     
     // Doanh thu từ đơn đã giao và đã thanh toán
     const totalRevenue = orders

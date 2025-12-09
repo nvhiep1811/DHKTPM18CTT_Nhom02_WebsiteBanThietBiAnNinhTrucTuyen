@@ -23,4 +23,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByUserId(@Param("userId") UUID userId);
 
     Integer countByDiscountIdAndUserId(UUID discountId, UUID userId);
+
+    Integer countOrdersByCreatedAtIsNotNull();
 }

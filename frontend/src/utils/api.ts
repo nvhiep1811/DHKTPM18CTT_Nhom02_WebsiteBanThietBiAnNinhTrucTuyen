@@ -110,6 +110,10 @@ export const productApi = {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
+  countProducts: async () => {
+    const response = await api.get<number>("/products/count");
+    return response.data;
+  }
 };
 
 // Orders API - TẤT CẢ REQUIRE AUTH
@@ -130,7 +134,7 @@ export const orderApi = {
     return response.data;
   },
   // Admin: Lấy tất cả đơn hàng
-  getAll: async (params?: { page?: number; size?: number }) => {
+  getAll: async (params?: { page?: number; size?: number; sort?: string }) => {
     const response = await api.get("/orders", { params });
     return response.data;
   },
@@ -154,6 +158,15 @@ export const orderApi = {
     const response = await api.patch(`/orders/cancel/${id}`);
     return response.data;
   },
+  // Admin: Cập nhật trạng thái đơn hàng
+  updateOrderStatus: async (id: string, status: string) => {
+    const response = await api.patch(`/orders/status/${id}`, { status });
+    return response.data;
+  },
+  countOrders: async () => {
+    const response = await api.get<number>("/orders/count");
+    return response.data;
+  }
 };
 
 // User API - TẤT CẢ REQUIRE AUTH
@@ -511,6 +524,15 @@ export const AddressApi = {
   // Đặt địa chỉ mặc định
   setDefault: async (id: string) => {
     const response = await api.patch(`/addresses/${id}/set-default`);
+    return response.data;
+  },
+};
+
+// Analytics API
+export const analyticsApi = {
+  // AUTH: Lấy dữ liệu analytics tổng hợp
+  getAnalyticsData: async (params?: { startDate?: string; endDate?: string }) => {
+    const response = await api.get("/analytics/summary", { params });
     return response.data;
   },
 };

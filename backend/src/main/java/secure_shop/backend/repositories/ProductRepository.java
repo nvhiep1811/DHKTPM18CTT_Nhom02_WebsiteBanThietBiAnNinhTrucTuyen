@@ -71,4 +71,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     // Top 5 products theo số lượng review (xem như 'bán chạy' / phổ biến)
     java.util.List<Product> findTop5ByActiveTrueOrderByReviewCountDesc();
+
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.deletedAt IS NULL")
+    Integer countProductsNotDeleted();
 }
+

@@ -52,7 +52,7 @@ export default function ChatPanel({ onClose, fullscreen }: { onClose?: () => voi
     "Chính sách đổi trả",
     "Cách đặt hàng",
     "Sản phẩm bán chạy",
-    "Tư vấn chọn laptop tầm 15 triệu",
+    "Tư vấn chọn sản phẩm tầm 15 triệu",
   ];
 
   return (

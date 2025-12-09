@@ -12,6 +12,7 @@ import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.dto.order.request.OrderCreateRequest;
+import secure_shop.backend.dto.order.request.OrderStatusChangeRequest;
 import secure_shop.backend.service.OrderService;
 
 import java.util.List;
@@ -74,5 +75,20 @@ public class OrderController {
     @PreAuthorize("@securityService.canAccessOrder(#id, authentication)")
     public ResponseEntity<OrderDTO> cancelOrder(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.cancelOrder(id));
+    }
+
+    @GetMapping("/count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Integer> getTotalOrdersCount() {
+        Integer totalCount = orderService.getTotalOrdersCount();
+        return ResponseEntity.ok(totalCount);
+    }
+
+    @PatchMapping("/status/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<OrderDTO> changeOrderStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody OrderStatusChangeRequest request) {
+        return ResponseEntity.ok(orderService.changeOrderStatus(id, request.getStatus()));
     }
 }
