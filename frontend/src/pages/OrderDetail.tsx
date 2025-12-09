@@ -11,6 +11,7 @@ interface OrderItem {
   unitPrice?: number;
   lineTotal?: number;
   reviewId?: string;
+  hasReview?: boolean;  // ✅ Add this
   rating?: number;
 }
 
@@ -259,7 +260,8 @@ export default function OrderDetail() {
                       <div className="font-semibold">{formatCurrency(it.lineTotal)}</div>
                     </div>
                   </div>
-                  {!it.reviewId && order.status === "DELIVERED" && (
+                  
+                  {!it.hasReview && order.status === "DELIVERED" && (
                     <button
                       onClick={() => handleOpenReview(it)}
                       className="mt-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[.97] transition shadow-sm"
@@ -267,9 +269,27 @@ export default function OrderDetail() {
                       Viết đánh giá
                     </button>
                   )}
-                  {!it.reviewId && order.status !== "DELIVERED" && (
+                  {!it.hasReview && order.status !== "DELIVERED" && (
                     <div className="mt-3 text-xs text-gray-500 italic">
                       Chỉ có thể đánh giá sau khi đơn hàng đã được giao
+                    </div>
+                  )}
+
+                 {it.hasReview && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      <span className="text-xs text-gray-600">Đã đánh giá</span>
+
+                      {it.reviewId && (
+                        <button
+                          onClick={() =>
+                            navigate('/profile', { state: { tab: 'reviews' } })
+                          }
+                          className="text-xs text-indigo-600 hover:underline ml-2"
+                        >
+                          Xem
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -21,4 +21,6 @@ public class OrderItemDTO implements Serializable {
     private BigDecimal lineTotal;
     private ProductSummaryDTO product;
     private UUID orderId;
+    private Boolean hasReview;
+    private Long reviewId;
 }

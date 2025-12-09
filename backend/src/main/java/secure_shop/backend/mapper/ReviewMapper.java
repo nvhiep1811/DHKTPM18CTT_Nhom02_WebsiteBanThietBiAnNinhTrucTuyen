@@ -22,6 +22,7 @@ public class ReviewMapper {
                 .status(review.getStatus())
                 .createdAt(review.getCreatedAt())
                 .productId(review.getProduct() != null ? review.getProduct().getId() : null)
+                .productName(review.getProduct() != null ? review.getProduct().getName() : null)
                 .userId(review.getUser() != null ? review.getUser().getId() : null)
                 .userName(review.getUser() != null ? review.getUser().getName() : null)
                 .orderItem(review.getOrderItem() != null ? review.getOrderItem().getId() : null)

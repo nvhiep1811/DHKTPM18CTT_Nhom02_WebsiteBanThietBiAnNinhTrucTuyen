@@ -5,6 +5,7 @@ import secure_shop.backend.dto.order.OrderItemDTO;
 import secure_shop.backend.dto.product.ProductSummaryDTO;
 import secure_shop.backend.entities.OrderItem;
 import secure_shop.backend.entities.Product;
+import secure_shop.backend.repositories.ReviewRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,9 +14,11 @@ import java.util.stream.Collectors;
 public class OrderItemMapper {
 
     private final ProductMapper productMapper;
+    private final ReviewRepository reviewRepository;
 
-    public OrderItemMapper(ProductMapper productMapper) {
+    public OrderItemMapper(ProductMapper productMapper, ReviewRepository reviewRepository) {
         this.productMapper = productMapper;
+        this.reviewRepository = reviewRepository;
     }
 
     public OrderItemDTO toDTO(OrderItem orderItem) {
@@ -26,6 +29,18 @@ public class OrderItemMapper {
             productDTO = productMapper.toProductSummaryDTO(orderItem.getProduct());
         }
 
+        // Check if this order item has been reviewed
+        Boolean hasReview = false;
+        Long reviewId = null;
+        if (orderItem.getId() != null) {
+            hasReview = reviewRepository.existsByOrderItemId(orderItem.getId());
+            if (hasReview) {
+                reviewId = reviewRepository.findByOrderItemId(orderItem.getId())
+                        .map(review -> review.getId())
+                        .orElse(null);
+            }
+        }
+
         return OrderItemDTO.builder()
                 .id(orderItem.getId())
                 .unitPrice(orderItem.getUnitPrice())
@@ -33,6 +48,8 @@ public class OrderItemMapper {
                 .lineTotal(orderItem.getLineTotal())
                 .product(productDTO)
                 .orderId(orderItem.getOrder() != null ? orderItem.getOrder().getId() : null)
+                .hasReview(hasReview)
+                .reviewId(reviewId)
                 .build();
     }
 
@@ -69,4 +86,3 @@ public class OrderItemMapper {
         if (dto.getLineTotal() != null) entity.setLineTotal(dto.getLineTotal());
     }
 }
-
