@@ -322,3 +322,47 @@ export interface TopProductChartData {
   reviews: number;
   rating: number;
 }
+
+// Analytics Types
+export type OrderStatus = 
+  | 'PENDING' 
+  | 'CONFIRMED' 
+  | 'WAITING_FOR_DELIVERY' 
+  | 'IN_TRANSIT' 
+  | 'DELIVERED' 
+  | 'CANCELLED';
+
+export interface RevenueDataPoint {
+  date: string; // Format: yyyy-MM-dd
+  revenue: number;
+  orderCount: number;
+}
+
+export interface OrderStatusDistribution {
+  status: OrderStatus;
+  count: number;
+}
+
+export interface TopProduct {
+  id: string;
+  name: string;
+  thumbnailUrl: string;
+  totalQuantitySold: number;
+  totalRevenue: number;
+}
+
+export interface AnalyticsSummary {
+  hasData: boolean;
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  avgOrderValue: number;
+  totalUsers: number;
+  activeUsers: number;
+  conversionRate: number;
+  orderStatusDistribution: OrderStatusDistribution[];
+  revenueTrend: RevenueDataPoint[];
+  topProducts: TopProduct[];
+}

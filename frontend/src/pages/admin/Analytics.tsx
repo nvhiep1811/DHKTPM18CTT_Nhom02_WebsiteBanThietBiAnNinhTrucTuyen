@@ -1,25 +1,53 @@
-import React, { useMemo, useState } from 'react';
-import { TrendingUp, Package, ShoppingCart, Users, DollarSign, AlertTriangle, CheckCircle, Clock, FileSpreadsheet, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, Package, ShoppingCart, Users, DollarSign, AlertTriangle, CheckCircle, FileSpreadsheet, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Order, ProductSummary, UserSummary } from '../../types/types';
-
-type Props = { data?: any };
+import type { AnalyticsSummary, OrderStatus, ProductSummary } from '../../types/types';
+import { analyticsApi, productApi } from '../../utils/api';
 
 type DateRange = 'today' | 'week' | 'month' | 'year' | 'custom';
 
-const Analytics: React.FC<Props> = ({ data }) => {
-  const orders: Order[] = data?.orders || [];
-  const products: ProductSummary[] = data?.products || [];
-  const users: UserSummary[] = data?.users || [];
-
+const Analytics: React.FC = () => {
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  // Lọc đơn hàng theo khoảng thời gian
-  const filteredOrders = useMemo(() => {
+  // Load analytics data from backend
+  useEffect(() => {
+    loadAnalyticsData();
+    loadProductsData();
+  }, [dateRange, startDate, endDate]);
+
+  const loadAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const { start, end } = getDateRangeValues();
+      const data = await analyticsApi.getAnalyticsData({
+        startDate: start?.toISOString(),
+        endDate: end?.toISOString()
+      });
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProductsData = async () => {
+    try {
+      const response = await productApi.getAll({ page: 0, size: 100 });
+      setProducts(response.content || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
+
+  const getDateRangeValues = () => {
     const now = new Date();
     let start: Date;
     let end: Date = now;
@@ -38,20 +66,17 @@ const Analytics: React.FC<Props> = ({ data }) => {
         start = new Date(now.getFullYear(), 0, 1);
         break;
       case 'custom':
-        if (!startDate || !endDate) return orders;
+        if (!startDate || !endDate) return { start: null, end: null };
         start = new Date(startDate);
         end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
         break;
       default:
-        return orders;
+        return { start: null, end: null };
     }
 
-    return orders.filter((order: Order) => {
-      const orderDate = new Date(order.createdAt);
-      return orderDate >= start && orderDate <= end;
-    });
-  }, [orders, dateRange, startDate, endDate]);
+    return { start, end };
+  };
 
   const getDateRangeLabel = () => {
     const now = new Date();
@@ -74,265 +99,112 @@ const Analytics: React.FC<Props> = ({ data }) => {
     }
   };
 
-  // Tính toán thống kê
-  const stats = useMemo(() => {
-    // Tổng doanh thu
-    const totalRevenue = filteredOrders
-      .filter((o: Order) => o.status === 'DELIVERED' && o.paymentStatus === 'PAID')
-      .reduce((sum: number, o: Order) => sum + o.grandTotal, 0);
-
-    // Tổng đơn hàng
-    const totalOrders = filteredOrders.length;
-
-    // Đơn hàng đang xử lý
-    const pendingOrders = filteredOrders.filter((o: Order) => 
-      o.status === 'PENDING' || o.status === 'WAITING_FOR_DELIVERY' || o.status === 'IN_TRANSIT'
-    ).length;
-
-    // Đơn hàng hoàn thành
-    const completedOrders = filteredOrders.filter((o: Order) => o.status === 'DELIVERED').length;
-
-    // Đơn hàng bị hủy
-    const cancelledOrders = filteredOrders.filter((o: Order) => o.status === 'CANCELLED').length;
-
-    // Giá trị đơn hàng trung bình
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / completedOrders : 0;
-
-    // Tổng sản phẩm
-    const totalProducts = products.length;
-
-    // Sản phẩm còn hàng
-    const inStockProducts = products.filter((p: ProductSummary) => p.inStock).length;
-
-    // Sản phẩm hết hàng
-    const outOfStockProducts = totalProducts - inStockProducts;
-
-    // Tổng người dùng
-    const totalUsers = users.length;
-
-    // Người dùng đang hoạt động
-    const activeUsers = users.filter((u: UserSummary) => u.enabled).length;
-
-    // Tỷ lệ chuyển đổi (Số đơn hoàn thành / Tổng số người dùng) × 100
-    const conversionRate = totalUsers > 0 ? (completedOrders / totalUsers * 100).toFixed(2) : 0;
-
-    return {
-      totalRevenue,
-      totalOrders,
-      pendingOrders,
-      completedOrders,
-      cancelledOrders,
-      avgOrderValue,
-      totalProducts,
-      inStockProducts,
-      outOfStockProducts,
-      totalUsers,
-      activeUsers,
-      conversionRate
+  const getOrderStatusLabel = (status: OrderStatus): string => {
+    const labels: Record<OrderStatus, string> = {
+      PENDING: 'Chờ xử lý',
+      CONFIRMED: 'Đã xác nhận',
+      WAITING_FOR_DELIVERY: 'Chờ giao',
+      IN_TRANSIT: 'Đang giao',
+      DELIVERED: 'Đã giao',
+      CANCELLED: 'Đã hủy'
     };
-  }, [filteredOrders, products, users]);
+    return labels[status] || status;
+  };
 
-  // Top sản phẩm bán chạy
-  const topProducts = useMemo(() => {
-    const productSales = products
-      .sort((a: ProductSummary, b: ProductSummary) => b.reviewCount - a.reviewCount)
-      .slice(0, 5);
-    return productSales;
-  }, [products]);
+  // Prepare data for charts
+  const revenueChartData = analytics?.revenueTrend.map(point => ({
+    date: new Date(point.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    revenue: point.revenue / 1000000, // Convert to millions
+    orders: point.orderCount
+  })) || [];
 
-  // Đơn hàng gần đây
-  const recentOrders = useMemo(() => {
-    return [...filteredOrders]
-      .sort((a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 10);
-  }, [filteredOrders]);
+  const orderStatusChartData = analytics?.orderStatusDistribution.map(dist => ({
+    name: getOrderStatusLabel(dist.status),
+    value: dist.count,
+    color: dist.status === 'DELIVERED' ? '#10b981' 
+      : dist.status === 'CANCELLED' ? '#ef4444' 
+      : '#f59e0b'
+  })) || [];
 
-  // Dữ liệu biểu đồ doanh thu theo ngày (7 ngày gần nhất)
-  const revenueChartData = useMemo(() => {
-    const days = 7;
-    const data: Array<{ date: string; revenue: number; orders: number }> = [];
-    const now = new Date();
+  const topProductsChartData = analytics?.topProducts.map(product => ({
+    name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
+    sales: product.totalQuantitySold,
+    revenue: product.totalRevenue
+  })) || [];
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const dayOrders = filteredOrders.filter((order: Order) => {
-        const orderDate = new Date(order.createdAt);
-        return orderDate >= date && orderDate < nextDate;
-      });
-
-      const revenue = dayOrders
-        .filter((o: Order) => o.status === 'DELIVERED' && o.paymentStatus === 'PAID')
-        .reduce((sum: number, o: Order) => sum + o.grandTotal, 0);
-
-      const orderCount = dayOrders.length;
-
-      data.push({
-        date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        revenue: revenue / 1000000, // Chuyển sang triệu đồng
-        orders: orderCount
-      });
-    }
-
-    return data;
-  }, [filteredOrders]);
-
-  // Dữ liệu biểu đồ tròn trạng thái đơn hàng
-  const orderStatusChartData = useMemo(() => {
-    return [
-      { name: 'Hoàn thành', value: stats.completedOrders, color: '#10b981' },
-      { name: 'Đang xử lý', value: stats.pendingOrders, color: '#f59e0b' },
-      { name: 'Đã hủy', value: stats.cancelledOrders, color: '#ef4444' }
-    ];
-  }, [stats]);
-
-  // Dữ liệu top sản phẩm cho biểu đồ
-  const topProductsChartData = useMemo(() => {
-    return topProducts.slice(0, 5).map((product: ProductSummary) => ({
-      name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
-      reviews: product.reviewCount,
-      rating: product.rating
-    }));
-  }, [topProducts]);
-
-  const getOrderStatusBadge = (status: string) => {
-    const config: any = {
-      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock, label: 'Chờ xử lý' },
-      WAITING_FOR_DELIVERY: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Package, label: 'Chờ giao' },
-      IN_TRANSIT: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Package, label: 'Đang giao' },
-      DELIVERED: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle, label: 'Đã giao' },
-      CANCELLED: { bg: 'bg-red-100', text: 'text-red-700', icon: AlertTriangle, label: 'Đã hủy' },
-    };
-    const c = config[status] || config.PENDING;
-    const Icon = c.icon;
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>
-        <Icon className="w-3 h-3" />
-        {c.label}
-      </span>
-    );
+  // Product stock stats (separate from date filtering)
+  const productStats = {
+    totalProducts: products.length,
+    inStockProducts: products.filter(p => p.inStock).length,
+    outOfStockProducts: products.filter(p => !p.inStock).length
   };
 
   const handleExportExcel = () => {
+    if (!analytics) return;
+
     try {
-      // Tạo workbook mới
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Tổng quan
+      // Sheet 1: Overview
       const overviewData = [
         ['BÁO CÁO THỐNG KÊ TỔNG QUAN'],
         ['Khoảng thời gian', getDateRangeLabel()],
         ['Ngày tạo báo cáo', new Date().toLocaleDateString('vi-VN')],
         [],
         ['CHỈ TIÊU', 'GIÁ TRỊ'],
-        ['Tổng doanh thu', `${stats.totalRevenue.toLocaleString('vi-VN')} ₫`],
-        ['Tổng đơn hàng', stats.totalOrders],
-        ['Đơn đang xử lý', stats.pendingOrders],
-        ['Đơn hoàn thành', stats.completedOrders],
-        ['Đơn bị hủy', stats.cancelledOrders],
-        ['Giá trị đơn trung bình', `${stats.avgOrderValue.toLocaleString('vi-VN')} ₫`],
-        ['Tổng sản phẩm', stats.totalProducts],
-        ['Sản phẩm còn hàng', stats.inStockProducts],
-        ['Sản phẩm hết hàng', stats.outOfStockProducts],
-        ['Tổng người dùng', stats.totalUsers],
-        ['Người dùng hoạt động', stats.activeUsers],
-        ['Tỷ lệ chuyển đổi', `${stats.conversionRate}%`],
+        ['Tổng doanh thu', `${analytics.totalRevenue.toLocaleString('vi-VN')} ₫`],
+        ['Tổng đơn hàng', analytics.totalOrders],
+        ['Đơn đang xử lý', analytics.pendingOrders],
+        ['Đơn hoàn thành', analytics.completedOrders],
+        ['Đơn bị hủy', analytics.cancelledOrders],
+        ['Giá trị đơn trung bình', `${analytics.avgOrderValue.toLocaleString('vi-VN')} ₫`],
+        ['Tổng sản phẩm', productStats.totalProducts],
+        ['Sản phẩm còn hàng', productStats.inStockProducts],
+        ['Sản phẩm hết hàng', productStats.outOfStockProducts],
+        ['Tổng người dùng', analytics.totalUsers],
+        ['Người dùng hoạt động', analytics.activeUsers],
+        ['Tỷ lệ chuyển đổi', `${analytics.conversionRate}%`],
       ];
       const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
-      
-      // Định dạng cột
       wsOverview['!cols'] = [{ wch: 30 }, { wch: 25 }];
-      
       XLSX.utils.book_append_sheet(wb, wsOverview, 'Tổng quan');
 
-      // Sheet 2: Chi tiết đơn hàng
-      const ordersData = [
-        ['DANH SÁCH ĐƠN HÀNG'],
-        [],
-        ['Mã đơn', 'Khách hàng', 'Email', 'Ngày đặt', 'Tổng tiền (₫)', 'Trạng thái', 'Thanh toán']
-      ];
-
-      recentOrders.forEach((order: Order) => {
-        ordersData.push([
-          order.id,
-          order.user.name,
-          order.user.email,
-          new Date(order.createdAt).toLocaleDateString('vi-VN'),
-          order.grandTotal.toLocaleString('vi-VN'),
-          order.status === 'DELIVERED' ? 'Đã giao' :
-          order.status === 'PENDING' ? 'Chờ xử lý' :
-          order.status === 'WAITING_FOR_DELIVERY' ? 'Chờ giao' :
-          order.status === 'IN_TRANSIT' ? 'Đang giao' : 'Đã hủy',
-          order.paymentStatus === 'PAID' ? 'Đã thanh toán' :
-          order.paymentStatus === 'FAILED' ? 'Thất bại' : 'Chưa thanh toán'
-        ]);
-      });
-
-      const wsOrders = XLSX.utils.aoa_to_sheet(ordersData);
-      wsOrders['!cols'] = [
-        { wch: 35 }, { wch: 20 }, { wch: 25 }, { wch: 12 }, 
-        { wch: 15 }, { wch: 15 }, { wch: 15 }
-      ];
-      
-      XLSX.utils.book_append_sheet(wb, wsOrders, 'Đơn hàng');
-
-      // Sheet 3: Top sản phẩm
+      // Sheet 2: Top Products
       const productsData = [
-        ['TOP 5 SẢN PHẨM ĐƯỢC ĐÁNH GIÁ'],
+        ['TOP SẢN PHẨM BÁN CHẠY'],
         [],
-        ['#', 'Tên sản phẩm', 'SKU', 'Giá (₫)', 'Đánh giá', 'Số đánh giá', 'Trạng thái']
+        ['#', 'Tên sản phẩm', 'Số lượng bán', 'Doanh thu (₫)']
       ];
-
-      topProducts.forEach((product: ProductSummary, index: number) => {
+      analytics.topProducts.forEach((product, index) => {
         productsData.push([
           String(index + 1),
           product.name,
-          product.sku,
-          product.price.toLocaleString('vi-VN'),
-          product.rating.toFixed(1),
-          String(product.reviewCount),
-          product.inStock ? 'Còn hàng' : 'Hết hàng'
+          String(product.totalQuantitySold),
+          product.totalRevenue.toLocaleString('vi-VN')
         ]);
       });
-
       const wsProducts = XLSX.utils.aoa_to_sheet(productsData);
-      wsProducts['!cols'] = [
-        { wch: 5 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, 
-        { wch: 10 }, { wch: 12 }, { wch: 12 }
-      ];
-      
+      wsProducts['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 15 }, { wch: 20 }];
       XLSX.utils.book_append_sheet(wb, wsProducts, 'Top sản phẩm');
 
-      // Sheet 4: Người dùng
-      const usersData = [
-        ['THỐNG KÊ NGƯỜI DÙNG'],
+      // Sheet 3: Revenue Trend
+      const revenueTrendData = [
+        ['BIỂU ĐỒ DOANH THU'],
         [],
-        ['Tên', 'Email', 'Số điện thoại', 'Vai trò', 'Trạng thái']
+        ['Ngày', 'Doanh thu (₫)', 'Số đơn hàng']
       ];
-
-      users.forEach((user: UserSummary) => {
-        usersData.push([
-          user.name,
-          user.email,
-          user.phone || 'N/A',
-          user.role,
-          user.enabled ? 'Hoạt động' : 'Khóa'
+      analytics.revenueTrend.forEach(point => {
+        revenueTrendData.push([
+          point.date,
+          point.revenue.toLocaleString('vi-VN'),
+          String(point.orderCount)
         ]);
       });
+      const wsRevenue = XLSX.utils.aoa_to_sheet(revenueTrendData);
+      wsRevenue['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, wsRevenue, 'Doanh thu');
 
-      const wsUsers = XLSX.utils.aoa_to_sheet(usersData);
-      wsUsers['!cols'] = [
-        { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 12 }
-      ];
-      
-      XLSX.utils.book_append_sheet(wb, wsUsers, 'Người dùng');
-
-      // Xuất file
+      // Export file
       const dateLabel = dateRange === 'custom' && startDate && endDate
         ? `${startDate}_${endDate}`
         : dateRange === 'today' ? 'HomNay'
@@ -343,13 +215,34 @@ const Analytics: React.FC<Props> = ({ data }) => {
       
       const fileName = `BaoCaoThongKe_${dateLabel}_${new Date().getTime()}.xlsx`;
       XLSX.writeFile(wb, fileName);
-
-      // Hiển thị thông báo thành công (nếu có toast)
     } catch (error) {
-      console.error('Lỗi khi xuất báo cáo Excel:', error);
+      console.error('Error exporting Excel:', error);
       alert('Có lỗi xảy ra khi tạo báo cáo Excel. Vui lòng thử lại.');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải dữ liệu thống kê...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!analytics || !analytics.hasData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Không có dữ liệu</h3>
+          <p className="text-gray-600">Không có dữ liệu thống kê trong khoảng thời gian đã chọn.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -378,56 +271,23 @@ const Analytics: React.FC<Props> = ({ data }) => {
         <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Chọn khoảng thời gian</h3>
           <div className="flex flex-wrap gap-3 mb-4">
-            <button
-              onClick={() => setDateRange('today')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateRange === 'today'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Hôm nay
-            </button>
-            <button
-              onClick={() => setDateRange('week')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateRange === 'week'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tuần này
-            </button>
-            <button
-              onClick={() => setDateRange('month')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateRange === 'month'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tháng này
-            </button>
-            <button
-              onClick={() => setDateRange('year')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateRange === 'year'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Năm nay
-            </button>
-            <button
-              onClick={() => setDateRange('custom')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateRange === 'custom'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tùy chỉnh
-            </button>
+            {(['today', 'week', 'month', 'year', 'custom'] as DateRange[]).map((range) => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  dateRange === range
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {range === 'today' ? 'Hôm nay' 
+                  : range === 'week' ? 'Tuần này'
+                  : range === 'month' ? 'Tháng này'
+                  : range === 'year' ? 'Năm nay'
+                  : 'Tùy chỉnh'}
+              </button>
+            ))}
           </div>
 
           {dateRange === 'custom' && (
@@ -462,8 +322,8 @@ const Analytics: React.FC<Props> = ({ data }) => {
             <span className="text-sm text-purple-100">Tổng doanh thu</span>
             <DollarSign className="w-8 h-8 text-purple-200" />
           </div>
-          <p className="text-3xl font-bold mb-1">{stats.totalRevenue.toLocaleString('vi-VN')} ₫</p>
-          <p className="text-sm text-purple-100">Từ {stats.completedOrders} đơn đã giao</p>
+          <p className="text-3xl font-bold mb-1">{analytics.totalRevenue.toLocaleString('vi-VN')} ₫</p>
+          <p className="text-sm text-purple-100">Từ {analytics.completedOrders} đơn đã giao</p>
         </div>
 
         <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-xl p-6 shadow-lg">
@@ -471,8 +331,8 @@ const Analytics: React.FC<Props> = ({ data }) => {
             <span className="text-sm text-cyan-100">Tổng đơn hàng</span>
             <ShoppingCart className="w-8 h-8 text-cyan-200" />
           </div>
-          <p className="text-3xl font-bold mb-1">{stats.totalOrders}</p>
-          <p className="text-sm text-cyan-100">{stats.pendingOrders} đơn đang xử lý</p>
+          <p className="text-3xl font-bold mb-1">{analytics.totalOrders}</p>
+          <p className="text-sm text-cyan-100">{analytics.pendingOrders} đơn đang xử lý</p>
         </div>
 
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
@@ -480,8 +340,8 @@ const Analytics: React.FC<Props> = ({ data }) => {
             <span className="text-sm text-green-100">Tổng sản phẩm</span>
             <Package className="w-8 h-8 text-green-200" />
           </div>
-          <p className="text-3xl font-bold mb-1">{stats.totalProducts}</p>
-          <p className="text-sm text-green-100">{stats.inStockProducts} còn hàng</p>
+          <p className="text-3xl font-bold mb-1">{productStats.totalProducts}</p>
+          <p className="text-sm text-green-100">{productStats.inStockProducts} còn hàng</p>
         </div>
 
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg">
@@ -489,8 +349,8 @@ const Analytics: React.FC<Props> = ({ data }) => {
             <span className="text-sm text-orange-100">Người dùng</span>
             <Users className="w-8 h-8 text-orange-200" />
           </div>
-          <p className="text-3xl font-bold mb-1">{stats.totalUsers}</p>
-          <p className="text-sm text-orange-100">{stats.activeUsers} đang hoạt động</p>
+          <p className="text-3xl font-bold mb-1">{analytics.totalUsers}</p>
+          <p className="text-sm text-orange-100">{analytics.activeUsers} đang hoạt động</p>
         </div>
       </div>
 
@@ -498,49 +358,41 @@ const Analytics: React.FC<Props> = ({ data }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">Đơn hoàn thành</span>
-            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="text-sm text-gray-600">Giá trị đơn TB</span>
+            <TrendingUp className="w-6 h-6 text-purple-600" />
           </div>
-          <p className="text-2xl font-bold text-zinc-800 mb-1">{stats.completedOrders}</p>
-          <p className="text-sm text-gray-500">{((stats.completedOrders / stats.totalOrders) * 100 || 0).toFixed(1)}% tổng đơn</p>
+          <p className="text-2xl font-bold text-gray-800">{analytics.avgOrderValue.toLocaleString('vi-VN')} ₫</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">Đơn hoàn thành</span>
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{analytics.completedOrders}</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">Đơn bị hủy</span>
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <AlertTriangle className="w-6 h-6 text-red-600" />
           </div>
-          <p className="text-2xl font-bold text-zinc-800 mb-1">{stats.cancelledOrders}</p>
-          <p className="text-sm text-gray-500">{((stats.cancelledOrders / stats.totalOrders) * 100 || 0).toFixed(1)}% tổng đơn</p>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">Giá trị đơn TB</span>
-            <DollarSign className="w-5 h-5 text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold text-zinc-800 mb-1">{stats.avgOrderValue.toLocaleString('vi-VN')} ₫</p>
-          <p className="text-sm text-gray-500">Trung bình mỗi đơn</p>
+          <p className="text-2xl font-bold text-gray-800">{analytics.cancelledOrders}</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">Tỷ lệ chuyển đổi</span>
-            <TrendingUp className="w-5 h-5 text-cyan-600" />
+            <TrendingUp className="w-6 h-6 text-cyan-600" />
           </div>
-          <p className="text-2xl font-bold text-zinc-800 mb-1">{stats.conversionRate}%</p>
-          <p className="text-sm text-gray-500">Từ người dùng</p>
+          <p className="text-2xl font-bold text-gray-800">{analytics.conversionRate}%</p>
         </div>
       </div>
 
-      {/* Top Products and Recent Orders */}
+      {/* Charts - Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Biểu đồ Doanh thu theo ngày */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-purple-600" />
-            Doanh thu 7 ngày gần nhất
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Doanh thu theo ngày</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={revenueChartData}>
               <defs>
@@ -549,36 +401,17 @@ const Analytics: React.FC<Props> = ({ data }) => {
                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }}
-                formatter={(value: number) => [`${value.toFixed(2)} triệu ₫`, 'Doanh thu']}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#8b5cf6" 
-                fillOpacity={1} 
-                fill="url(#colorRevenue)" 
-                strokeWidth={2}
-              />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => `${value.toFixed(2)} triệu ₫`} />
+              <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorRevenue)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Biểu đồ Trạng thái đơn hàng */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-cyan-600" />
-            Phân bố trạng thái đơn hàng
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Phân bố trạng thái đơn hàng</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -586,7 +419,7 @@ const Analytics: React.FC<Props> = ({ data }) => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={(entry) => `${entry.name}: ${entry.value}`}
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
@@ -595,208 +428,76 @@ const Analytics: React.FC<Props> = ({ data }) => {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px'
-                }}
-              />
+              <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Biểu đồ Top sản phẩm và Số đơn hàng */}
+      {/* Charts - Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Biểu đồ Top sản phẩm */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-green-600" />
-            Top 5 sản phẩm theo đánh giá
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 5 sản phẩm bán chạy</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topProductsChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" stroke="#94a3b8" style={{ fontSize: '11px' }} angle={-15} textAnchor="end" height={80} />
-              <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px'
-                }}
-              />
-              <Bar dataKey="reviews" fill="#10b981" radius={[8, 8, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="sales" fill="#10b981" name="Số lượng bán" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Biểu đồ Đơn hàng theo ngày */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-cyan-600" />
-            Số đơn hàng 7 ngày gần nhất
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Số đơn hàng theo ngày</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenueChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="orders" 
-                stroke="#06b6d4" 
-                strokeWidth={3}
-                dot={{ fill: '#06b6d4', r: 5 }}
-                activeDot={{ r: 7 }}
-              />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="orders" stroke="#06b6d4" strokeWidth={2} name="Số đơn" />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Chi tiết sản phẩm và trạng thái */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Top Products */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-purple-600" />
-            Top 5 sản phẩm được đánh giá
-          </h3>
-          <div className="space-y-3">
-            {topProducts.length > 0 ? (
-              topProducts.map((product: ProductSummary, index: number) => (
-                <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-100 to-cyan-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-purple-600">#{index + 1}</span>
-                  </div>
-                  <img 
-                    src={product.thumbnailUrl} 
-                    alt={product.name}
-                    className="w-12 h-12 object-cover rounded-lg"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <span className="text-yellow-500">★</span>
-                        {product.rating.toFixed(1)}
-                      </span>
-                      <span>•</span>
-                      <span>{product.reviewCount} đánh giá</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-purple-600">{product.price.toLocaleString('vi-VN')} ₫</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center py-8 text-gray-500">Chưa có dữ liệu</p>
-            )}
-          </div>
-        </div>
-
-        {/* Order Status Summary */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-cyan-600" />
-            Trạng thái đơn hàng
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Clock className="w-8 h-8 text-yellow-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Chờ xử lý</p>
-                  <p className="text-xs text-gray-500">Cần xác nhận</p>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</p>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Hoàn thành</p>
-                  <p className="text-xs text-gray-500">Đã giao hàng</p>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-green-600">{stats.completedOrders}</p>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Đã hủy</p>
-                  <p className="text-xs text-gray-500">Không thành công</p>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-red-600">{stats.cancelledOrders}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Orders Table */}
+      {/* Top Products Table */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-zinc-800 mb-4">Đơn hàng gần đây</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Top sản phẩm bán chạy</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã đơn</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Khách hàng</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ngày đặt</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tổng tiền</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Trạng thái</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Thanh toán</th>
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">#</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sản phẩm</th>
+                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Số lượng bán</th>
+                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Doanh thu</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {recentOrders.length > 0 ? (
-                recentOrders.map((order: Order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-mono text-gray-900">#{order.id.slice(0, 8)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{order.user.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">
-                      {order.grandTotal.toLocaleString('vi-VN')} ₫
-                    </td>
-                    <td className="px-4 py-3 text-sm">{getOrderStatusBadge(order.status)}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        order.paymentStatus === 'PAID' 
-                          ? 'bg-green-100 text-green-700' 
-                          : order.paymentStatus === 'FAILED'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : 
-                         order.paymentStatus === 'FAILED' ? 'Thất bại' : 'Chưa thanh toán'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Chưa có đơn hàng nào
+            <tbody>
+              {analytics.topProducts.map((product, index) => (
+                <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-3 px-4 text-sm text-gray-600">{index + 1}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={product.thumbnailUrl || '/placeholder.png'}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-800">{product.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-800 font-medium">
+                    {product.totalQuantitySold}
+                  </td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-800 font-medium">
+                    {product.totalRevenue.toLocaleString('vi-VN')} ₫
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -806,28 +507,3 @@ const Analytics: React.FC<Props> = ({ data }) => {
 };
 
 export default Analytics;
-
-export async function loadData() {
-  try {
-    const { orderApi, productApi, userApi } = await import('../../utils/api');
-    
-    const [ordersResponse, productsResponse, usersResponse] = await Promise.all([
-      orderApi.getAll(),
-      productApi.getAll({ page: 0, size: 100 }),
-      userApi.getAllUsers()
-    ]);
-
-    return {
-      orders: ordersResponse.content || ordersResponse,
-      products: productsResponse.content || [],
-      users: usersResponse.content || usersResponse
-    };
-  } catch (error) {
-    console.error('Error loading analytics data:', error);
-    return {
-      orders: [],
-      products: [],
-      users: []
-    };
-  }
-}

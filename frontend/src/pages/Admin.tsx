@@ -197,9 +197,9 @@ const Admin: React.FC = () => {
             const mod = await import('./admin/Analytics') as AdminModule;
             if (!mounted) return;
             setLoadedComponent(() => mod.default);
-            setCurrentLoadData(() => mod.loadData || (() => Promise.resolve(null)));
-            const d = await (mod.loadData?.() ?? null);
-            setData(d);
+            // Analytics component loads its own data via useEffect
+            setCurrentLoadData(() => () => Promise.resolve(null));
+            setData(null);
             break;
           }
           case 'reviews': {
