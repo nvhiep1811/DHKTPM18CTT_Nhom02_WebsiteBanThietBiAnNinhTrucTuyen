@@ -19,7 +19,6 @@ import secure_shop.backend.entities.User;
 import secure_shop.backend.exception.ForbiddenException;
 import secure_shop.backend.exception.UnauthorizedException;
 import secure_shop.backend.security.jwt.JwtService;
-import secure_shop.backend.service.CartService;
 import secure_shop.backend.service.PasswordResetService;
 import secure_shop.backend.service.UserService;
 
@@ -45,7 +44,6 @@ public class AuthController {
     private final UserService userService;
     private final PasswordResetService resetService;
     private final VerificationService verificationService;
-    private final CartService cartService;
 
     /**
      * Xác thực email
@@ -133,23 +131,6 @@ public class AuthController {
                 .maxAge(Duration.ofSeconds(jwtService.getRefreshExpSeconds()))
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
-
-        // Merge giỏ hàng của guest vào giỏ hàng của user sau khi đăng nhập
-        if (req.getGuestCartItems() != null && !req.getGuestCartItems().isEmpty()) {
-            try {
-                // Tạm thời set authentication context để cartService có thể lấy userId
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        user.getId().toString(), null, null);
-                org.springframework.security.core.context.SecurityContextHolder.getContext()
-                        .setAuthentication(authentication);
-
-                // Merge cart
-                cartService.mergeGuestCart(req.getGuestCartItems());
-            } catch (Exception e) {
-                // Log lỗi nhưng không làm gián đoạn quá trình đăng nhập
-                System.err.println("Lỗi khi merge giỏ hàng: " + e.getMessage());
-            }
-        }
 
         return ResponseEntity.ok(new AuthResponse(accessToken, jwtService.getAccessExpSeconds()));
     }
