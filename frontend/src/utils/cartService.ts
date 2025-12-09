@@ -99,7 +99,6 @@ class CartService {
           availableStock: product.availableStock,
           quantity: quantity,
         });
-        return true;
       } catch (error: any) {
         // Xử lý lỗi từ backend
         const errorMsg =
@@ -149,9 +148,9 @@ class CartService {
       }
 
       localStorage.setItem("guestCart", JSON.stringify(cart));
-      toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
-      return true;
     }
+    toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+    return true;
   }
 
   // === Update Quantity ===
