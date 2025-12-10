@@ -9,6 +9,7 @@ import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
 import secure_shop.backend.dto.order.request.OrderCreateRequest;
 import secure_shop.backend.dto.order.request.OrderItemRequest;
+import secure_shop.backend.dto.order.OrderSummaryDTO;
 import secure_shop.backend.entities.*;
 import secure_shop.backend.enums.OrderStatus;
 import secure_shop.backend.enums.PaymentMethod;
@@ -176,25 +177,25 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderDTO> getAllOrders() {
+    public List<OrderSummaryDTO> getAllOrders() {
         return orderRepository.findAll().stream()
-                .map(orderMapper::toDTO)
+                .map(orderMapper::toSummaryDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderDTO> getOrdersPage(Pageable pageable) {
+    public Page<OrderSummaryDTO> getOrdersPage(Pageable pageable) {
         return orderRepository.findAllOrdersSortedByCreatedAtDesc(pageable)
-                .map(orderMapper::toDTO);
+                .map(orderMapper::toSummaryDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderDTO> getOrdersByUserId(UUID userId) {
+    public List<OrderSummaryDTO> getOrdersByUserId(UUID userId) {
         return orderRepository.findByUserId(userId).stream()
                 .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
-                .map(orderMapper::toDTO)
+                .map(orderMapper::toSummaryDTO)
                 .collect(Collectors.toList());
     }
 

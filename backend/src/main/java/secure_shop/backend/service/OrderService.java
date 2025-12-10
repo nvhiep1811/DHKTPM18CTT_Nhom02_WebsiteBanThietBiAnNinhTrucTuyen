@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
+import secure_shop.backend.dto.order.OrderSummaryDTO;
 import secure_shop.backend.dto.order.request.OrderCreateRequest;
 
 import java.util.List;
@@ -20,11 +21,11 @@ public interface OrderService {
 
     OrderDetailsDTO getOrderDetailsById(UUID id);
 
-    List<OrderDTO> getAllOrders();
+    List<OrderSummaryDTO> getAllOrders();
 
-    Page<OrderDTO> getOrdersPage(Pageable pageable);
+    Page<OrderSummaryDTO> getOrdersPage(Pageable pageable);
 
-    List<OrderDTO> getOrdersByUserId(UUID userId);
+    List<OrderSummaryDTO> getOrdersByUserId(UUID userId);
 
     OrderDTO confirmOrder(UUID id);
 

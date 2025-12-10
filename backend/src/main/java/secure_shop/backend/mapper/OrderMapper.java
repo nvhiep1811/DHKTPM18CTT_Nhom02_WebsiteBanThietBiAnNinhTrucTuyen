@@ -3,6 +3,7 @@ package secure_shop.backend.mapper;
 import org.springframework.stereotype.Component;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
+import secure_shop.backend.dto.order.OrderSummaryDTO;
 import secure_shop.backend.entities.Discount;
 import secure_shop.backend.entities.Order;
 import secure_shop.backend.entities.User;
@@ -29,6 +30,29 @@ public class OrderMapper {
         this.orderItemMapper = orderItemMapper;
         this.paymentMapper = paymentMapper;
         this.shipmentMapper = shipmentMapper;
+    }
+
+    public OrderSummaryDTO toSummaryDTO(Order order) {
+        if (order == null) return null;
+
+        return OrderSummaryDTO.builder()
+                .id(order.getId())
+                .status(order.getStatus())
+                .paymentStatus(order.getPaymentStatus())
+                .subTotal(order.getSubTotal())
+                .discountTotal(order.getDiscountTotal())
+                .shippingFee(order.getShippingFee())
+                .grandTotal(order.getGrandTotal())
+                .hasPaid(order.getHasPaid())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .confirmedAt(order.getConfirmedAt())
+                .cancelledAt(order.getCancelledAt())
+                .shippingAddress(order.getShippingAddress())
+                .discount(order.getDiscount() != null ? discountMapper.toDTO(order.getDiscount()) : null)
+                .user(order.getUser() != null ? userMapper.toSummaryDTO(order.getUser()) : null)
+                // orderItems intentionally excluded for performance
+                .build();
     }
 
     public OrderDTO toDTO(Order order) {
@@ -115,6 +139,13 @@ public class OrderMapper {
         }
 
         return order;
+    }
+
+    public List<OrderSummaryDTO> toSummaryDTOList(List<Order> orders) {
+        if (orders == null) return List.of();
+        return orders.stream()
+                .map(this::toSummaryDTO)
+                .collect(Collectors.toList());
     }
 
     public List<OrderDTO> toDTOList(List<Order> orders) {

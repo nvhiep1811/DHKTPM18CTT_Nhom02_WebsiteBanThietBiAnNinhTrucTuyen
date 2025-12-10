@@ -11,9 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import secure_shop.backend.config.security.CustomUserDetails;
 import secure_shop.backend.dto.order.OrderDTO;
 import secure_shop.backend.dto.order.OrderDetailsDTO;
+import secure_shop.backend.dto.order.OrderItemDTO;
+import secure_shop.backend.dto.order.OrderSummaryDTO;
 import secure_shop.backend.dto.order.request.OrderCreateRequest;
 import secure_shop.backend.dto.order.request.OrderStatusChangeRequest;
 import secure_shop.backend.service.OrderService;
+import secure_shop.backend.service.OrderItemService;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,16 +27,17 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderItemService orderItemService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<OrderDTO>> getAllOrders(Pageable pageable) {
+    public ResponseEntity<Page<OrderSummaryDTO>> getAllOrders(Pageable pageable) {
         return ResponseEntity.ok(orderService.getOrdersPage(pageable));
     }
 
     @GetMapping("/my-orders")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<OrderDTO>> getMyOrders(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<List<OrderSummaryDTO>> getMyOrders(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getId();
         return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
     }
@@ -42,6 +46,12 @@ public class OrderController {
     @PreAuthorize("@securityService.canAccessOrder(#id, authentication)")
     public ResponseEntity<OrderDetailsDTO> getOrderById(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.getOrderDetailsById(id));
+    }
+
+    @GetMapping("/{orderId}/items")
+    @PreAuthorize("@securityService.canAccessOrder(#orderId, authentication)")
+    public ResponseEntity<List<OrderItemDTO>> getOrderItems(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderItemService.getOrderItemsByOrderId(orderId));
     }
 
     @PostMapping

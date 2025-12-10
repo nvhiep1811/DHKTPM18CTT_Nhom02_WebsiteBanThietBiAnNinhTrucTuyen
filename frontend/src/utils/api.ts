@@ -118,14 +118,19 @@ export const productApi = {
 
 // Orders API - TẤT CẢ REQUIRE AUTH
 export const orderApi = {
-  // User: Lấy đơn hàng của mình
+  // User: Lấy đơn hàng của mình (không bao gồm orderItems)
   getOrders: async () => {
     const response = await api.get("/orders/my-orders");
     return response.data;
   },
-  // User/Admin: Lấy chi tiết đơn hàng
+  // User/Admin: Lấy chi tiết đơn hàng (bao gồm orderItems)
   getById: async (id: string) => {
     const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+  // User/Admin: Lấy order items của một đơn hàng
+  getOrderItems: async (orderId: string) => {
+    const response = await api.get(`/orders/${orderId}/items`);
     return response.data;
   },
   // User: Tạo đơn hàng mới
