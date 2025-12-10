@@ -1,5 +1,9 @@
 package secure_shop.backend.repositories;
 
+import org.aspectj.weaver.ast.Or;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,6 +33,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Integer countByDiscountIdAndUserId(UUID discountId, UUID userId);
 
     Integer countOrdersByCreatedAtIsNotNull();
+
+    //get all orders sorted by createdAt desc
+    @Query("SELECT o FROM Order o ORDER BY o.createdAt DESC")
+    Page<Order> findAllOrdersSortedByCreatedAtDesc(Pageable pageable);
 
     // Analytics queries
     @Query("SELECT COALESCE(SUM(o.grandTotal), 0) FROM Order o " +

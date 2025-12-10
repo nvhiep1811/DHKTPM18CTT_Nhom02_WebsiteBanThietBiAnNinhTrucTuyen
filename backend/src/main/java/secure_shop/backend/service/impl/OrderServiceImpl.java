@@ -185,7 +185,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderDTO> getOrdersPage(Pageable pageable) {
-        return orderRepository.findAll(pageable)
+        return orderRepository.findAllOrdersSortedByCreatedAtDesc(pageable)
                 .map(orderMapper::toDTO);
     }
 
@@ -193,6 +193,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public List<OrderDTO> getOrdersByUserId(UUID userId) {
         return orderRepository.findByUserId(userId).stream()
+                .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
                 .map(orderMapper::toDTO)
                 .collect(Collectors.toList());
     }
