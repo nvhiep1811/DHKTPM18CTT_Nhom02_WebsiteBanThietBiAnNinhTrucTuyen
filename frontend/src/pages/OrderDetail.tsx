@@ -48,9 +48,10 @@ export default function OrderDetail() {
         const data = await orderApi.getById(id);
         if (!mounted) return;
         setOrder(data);
+        setLoading(false);
       } catch (e: any) {
+        if (!mounted) return;
         setError(e?.response?.data?.message || "Không thể tải chi tiết đơn hàng");
-      } finally {
         setLoading(false);
       }
     })();
@@ -166,12 +167,63 @@ export default function OrderDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto p-4 space-y-4">
+      <div className="max-w-5xl mx-auto p-4 space-y-5">
         <BackLink />
-        <div className="grid md:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-24 bg-white/60 backdrop-blur-sm border border-indigo-100/40 rounded shadow-sm animate-pulse" />
-          ))}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 animate-pulse">
+          <div className="space-y-2">
+            <div className="h-8 bg-indigo-100 rounded w-64" />
+            <div className="h-4 bg-gray-100 rounded w-48" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-6 bg-blue-100 rounded-full w-24" />
+            <div className="h-6 bg-green-100 rounded-full w-20" />
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          <div className="md:col-span-2 space-y-4 animate-pulse">
+            <div className="border border-indigo-100 rounded-lg bg-white shadow-sm overflow-hidden">
+              <div className="h-12 bg-indigo-50/60" />
+              <div className="p-4 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-indigo-100 rounded" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-gray-100 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/3" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-100 rounded w-20" />
+                      <div className="h-5 bg-gray-100 rounded w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 animate-pulse">
+            <div className="border border-indigo-100 rounded-lg bg-white shadow-sm overflow-hidden">
+              <div className="h-12 bg-indigo-50/60" />
+              <div className="p-4 space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex justify-between">
+                    <div className="h-4 bg-gray-100 rounded w-24" />
+                    <div className="h-4 bg-gray-100 rounded w-20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border border-indigo-100 rounded-lg bg-white shadow-sm overflow-hidden">
+              <div className="h-12 bg-indigo-50/60" />
+              <div className="p-4">
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-100 rounded w-full" />
+                  <div className="h-4 bg-gray-100 rounded w-5/6" />
+                  <div className="h-4 bg-gray-100 rounded w-4/6" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

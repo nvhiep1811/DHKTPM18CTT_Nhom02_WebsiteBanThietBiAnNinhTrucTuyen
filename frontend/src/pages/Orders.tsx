@@ -35,12 +35,13 @@ export default function Orders() {
         console.log('Orders received:', data); // Debug log
         if (!mounted) return;
         setOrders(data || []);
+        setLoading(false);
       } catch (e: any) {
         console.error('Full error:', e); // Log full error
         console.error('Error response:', e.response); // Log response
         console.error('Error message:', e.message); // Log message
+        if (!mounted) return;
         setError(e?.response?.data?.message || e.message || "Không thể tải đơn hàng");
-      } finally {
         setLoading(false);
       }
     })();
@@ -71,19 +72,6 @@ export default function Orders() {
     return ["PENDING", "CONFIRMED", "IN_TRANSIT"].includes(status || "");
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto p-4">
-        <HeaderBar />
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-white/60 backdrop-blur-sm border border-indigo-100/40 rounded shadow-sm animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="max-w-5xl mx-auto p-4">
@@ -103,7 +91,51 @@ export default function Orders() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-4">
       <HeaderBar />
-      {orders.length === 0 ? (
+      {loading ? (
+        <div className="overflow-hidden border border-indigo-100 rounded-lg shadow-sm bg-white">
+          <div className="overflow-x-auto">
+            <table className="min-w-full align-middle">
+              <thead>
+                <tr className="bg-gradient-to-r from-indigo-50 to-purple-50 text-left text-[13px] text-indigo-700/90">
+                  <th className="px-4 py-3 font-medium">MÃ</th>
+                  <th className="px-4 py-3 font-medium">NGÀY TẠO</th>
+                  <th className="px-4 py-3 font-medium">TRẠNG THÁI</th>
+                  <th className="px-4 py-3 font-medium">THANH TOÁN</th>
+                  <th className="px-4 py-3 font-medium text-right">TỔNG</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i} className="border-t border-indigo-50/70 animate-pulse">
+                    <td className="px-4 py-3">
+                      <div className="h-5 bg-indigo-100 rounded w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-5 bg-gray-100 rounded w-32" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-6 bg-blue-100 rounded-full w-24" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-6 bg-green-100 rounded-full w-20" />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="h-5 bg-gray-100 rounded w-24 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="h-8 bg-indigo-100 rounded-md w-16" />
+                        <div className="h-8 bg-red-50 rounded-md w-16" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : orders.length === 0 ? (
         <div className="p-6 bg-white border border-dashed border-indigo-300/40 rounded text-gray-600 flex flex-col items-center gap-2">
           <EmptyIcon />
           <p>Bạn chưa có đơn hàng nào.</p>

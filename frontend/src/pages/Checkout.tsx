@@ -127,7 +127,7 @@ const Checkout: React.FC = () => {
       const res = await fetch(`https://vapi.vnappmob.com/api/v2/province/district/${provinceId}`);
       const data = await res.json();
       if (data.results) setDistricts(data.results);
-    } catch (err) {
+    } catch {
       toast.error('Lỗi tải quận/huyện!');
     } finally {
       setLoadingDistricts(false);
@@ -142,29 +142,18 @@ const Checkout: React.FC = () => {
       const res = await fetch(`https://vapi.vnappmob.com/api/v2/province/ward/${districtId}`);
       const data = await res.json();
       if (data.results) setWards(data.results);
-    } catch (err) {
+    } catch {
       toast.error('Lỗi tải phường/xã!');
     } finally {
       setLoadingWards(false);
     }
   };
 
-  // Load Address Into Form - NEW
-  const loadAddressIntoForm = async (address: Address) => {
+  // Load Address Into Form - FIXED
+  const loadAddressIntoForm = React.useCallback(async (address: Address) => {
     const [district, city] = address.province.includes(',') 
       ? address.province.split(',').map(s => s.trim())
       : ['', address.province];
-
-    setShippingInfo(prev => ({
-      ...prev,
-      fullName: address.name || user?.name || '',
-      phone: address.phone || user?.phone || '',
-      email: user?.email || '',
-      address: address.street,
-      city: city,
-      district: district,
-      ward: address.ward,
-    }));
 
     // Auto-select province
     const province = provinces.find(p => 
@@ -173,22 +162,88 @@ const Checkout: React.FC = () => {
     
     if (province) {
       setSelectedProvinceId(province.province_id);
-      await fetchDistricts(province.province_id);
+      
+      // Fetch districts and wait for state update
+      try {
+        const res = await fetch(`https://vapi.vnappmob.com/api/v2/province/district/${province.province_id}`);
+        const data = await res.json();
+        
+        if (data.results) {
+          setDistricts(data.results);
+          
+          // Find matching district by name (normalize comparison)
+          const districtMatch = data.results.find((d: any) => {
+            const normalizedApiName = d.district_name.toLowerCase().trim();
+            const normalizedStoredName = district.toLowerCase().trim();
+            return normalizedApiName === normalizedStoredName || 
+                   normalizedApiName.includes(normalizedStoredName) ||
+                   normalizedStoredName.includes(normalizedApiName);
+          });
 
-      setTimeout(async () => {
-        const districtMatch = districts.find((d: any) => 
-          d.district_name === district || 
-          d.district_name.includes(district) ||
-          district.includes(d.district_name)
-        );
-
-        if (districtMatch) {
-          setSelectedDistrictId(districtMatch.district_id);
-          await fetchWards(districtMatch.district_id);
+          if (districtMatch) {
+            setSelectedDistrictId(districtMatch.district_id);
+            
+            // Fetch wards for the matched district
+            const wardRes = await fetch(`https://vapi.vnappmob.com/api/v2/province/ward/${districtMatch.district_id}`);
+            const wardData = await wardRes.json();
+            
+            if (wardData.results) {
+              setWards(wardData.results);
+              
+              // Find matching ward by name (normalize comparison)
+              const wardMatch = wardData.results.find((w: any) => {
+                const normalizedApiName = w.ward_name.toLowerCase().trim();
+                const normalizedStoredName = address.ward.toLowerCase().trim();
+                return normalizedApiName === normalizedStoredName || 
+                       normalizedApiName.includes(normalizedStoredName) ||
+                       normalizedStoredName.includes(normalizedApiName);
+              });
+              
+              // Set shipping info with matched names from API (ensures consistency)
+              setShippingInfo(prev => ({
+                ...prev,
+                fullName: address.name || user?.name || '',
+                phone: address.phone || user?.phone || '',
+                email: user?.email || '',
+                address: address.street,
+                city: province.province_name,
+                district: districtMatch.district_name,
+                ward: wardMatch ? wardMatch.ward_name : address.ward,
+              }));
+            }
+          } else {
+            // District not found - still set info but warn user
+            console.warn('District not found in API:', district);
+            setShippingInfo(prev => ({
+              ...prev,
+              fullName: address.name || user?.name || '',
+              phone: address.phone || user?.phone || '',
+              email: user?.email || '',
+              address: address.street,
+              city: province.province_name,
+              district: district,
+              ward: address.ward,
+            }));
+          }
         }
-      }, 300);
+      } catch (error) {
+        console.error('Error loading address location data:', error);
+        toast.error('Không thể tải thông tin địa chỉ đầy đủ');
+      }
+    } else {
+      // Province not found - set basic info
+      setShippingInfo(prev => ({
+        ...prev,
+        fullName: address.name || user?.name || '',
+        phone: address.phone || user?.phone || '',
+        email: user?.email || '',
+        address: address.street,
+        city: city,
+        district: district,
+        ward: address.ward,
+      }));
     }
-  };
+  }, [provinces, user]);
 // Handle Address Change
   const handleAddressChange = (name: keyof ShippingInfo, value: string) => {
     if (name === 'city') {
@@ -273,6 +328,12 @@ const Checkout: React.FC = () => {
     if (!shippingInfo.city) newErrors.city = 'Vui lòng chọn tỉnh/thành phố';
     if (!shippingInfo.district) newErrors.district = 'Vui lòng chọn quận/huyện';
     if (!shippingInfo.ward) newErrors.ward = 'Vui lòng chọn phường/xã';
+
+    // Debug log
+    if (Object.keys(newErrors).length > 0) {
+      console.log('Validation errors:', newErrors);
+      console.log('Current shippingInfo:', shippingInfo);
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -425,7 +486,7 @@ const Checkout: React.FC = () => {
         const res = await fetch('https://vapi.vnappmob.com/api/v2/province/');
         const data = await res.json();
         if (data.results) setProvinces(data.results);
-      } catch (err) {
+      } catch {
         toast.error('Lỗi tải danh sách tỉnh/thành!');
       } finally {
         setLoadingProvinces(false);
@@ -468,7 +529,7 @@ const Checkout: React.FC = () => {
     if (provinces.length > 0) {
       loadSavedAddresses();
     }
-  }, [user, provinces.length]);
+  }, [user, provinces.length, loadAddressIntoForm]);
 
   // Show loading
   if (cartItems.length === 0 || loadingAddresses) {
@@ -726,7 +787,12 @@ const Checkout: React.FC = () => {
                 <div className="space-y-4 text-gray-700">
                   <p><strong>{shippingInfo.fullName}</strong> - {shippingInfo.phone}</p>
                   <p>{shippingInfo.email}</p>
-                  <p className="text-sm">{shippingInfo.address}, {shippingInfo.ward}, {shippingInfo.district}, {shippingInfo.city}</p>
+                  <div className="text-sm space-y-1">
+                    <p><strong>Địa chỉ:</strong> {shippingInfo.address || <span className="text-red-500">Chưa có</span>}</p>
+                    <p><strong>Phường/Xã:</strong> {shippingInfo.ward || <span className="text-red-500">Chưa chọn</span>}</p>
+                    <p><strong>Quận/Huyện:</strong> {shippingInfo.district || <span className="text-red-500">Chưa chọn</span>}</p>
+                    <p><strong>Tỉnh/Thành:</strong> {shippingInfo.city || <span className="text-red-500">Chưa chọn</span>}</p>
+                  </div>
                   {shippingInfo.note && <p className="text-sm italic">Ghi chú: {shippingInfo.note}</p>}
                 </div>
               )}
