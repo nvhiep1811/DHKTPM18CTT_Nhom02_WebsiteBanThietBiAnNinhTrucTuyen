@@ -118,9 +118,6 @@ const Footer: React.FC = () => {
                 Điều khoản sử dụng
               </Link>
             </div>
-            <p className="text-gray-300 text-sm">
-              Built with ❤️ by <Link rel="nofollow" target="_blank" to="https://fiveting.dev" className="text-cyan-500 hover:text-cyan-400 transition-colors">Fiveting</Link>
-            </p>
           </div>
         </div>
       </div>
